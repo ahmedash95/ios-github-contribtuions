@@ -12,35 +12,28 @@ struct AddUserView: View {
 
   var body: some View {
     NavigationView {
-      Form {
-        Section("GitHub Username") {
-          TextField("Enter username", text: $username)
-            .textInputAutocapitalization(.never)
-            .autocorrectionDisabled()
-        }
-
-        Section("Chart Theme") {
-          LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 12) {
-            ForEach(ContributionColorTheme.themes) { theme in
-              ThemePreviewCard(
-                theme: theme,
-                isSelected: selectedThemeId == theme.id
-              ) {
-                selectedThemeId = theme.id
-              }
-            }
+      VStack(spacing: 0) {
+        Form {
+          Section("GitHub Username") {
+            TextField("Enter username", text: $username)
+              .textInputAutocapitalization(.never)
+              .autocorrectionDisabled()
           }
-          .padding(.vertical, 8)
-        }
 
-        if !errorMessage.isEmpty {
-          Section {
+          if !errorMessage.isEmpty {
             Text(errorMessage)
               .foregroundColor(.red)
               .font(.caption)
+              .padding(.top, 8)
           }
         }
+        .frame(maxHeight: 180)
+
+        // Theme picker takes the rest of the space
+        ThemeGridPicker(selectedThemeId: $selectedThemeId)
+          .frame(maxHeight: .infinity)
       }
+      .ignoresSafeArea(.keyboard)
       .navigationTitle("Add User")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
@@ -82,37 +75,33 @@ struct AddUserView: View {
   }
 }
 
-struct ThemePreviewCard: View {
-  let theme: ContributionColorTheme
-  let isSelected: Bool
-  let onTap: () -> Void
+// Reusable theme grid picker for both AddUserView and SettingsView
+struct ThemeGridPicker: View {
+  @Binding var selectedThemeId: String
+  @Environment(\.colorScheme) private var colorScheme
+
+  let columns = [
+    GridItem(.flexible(), spacing: 20),
+    GridItem(.flexible(), spacing: 20),
+  ]
 
   var body: some View {
-    VStack(spacing: 6) {
-      Text(theme.name)
-        .font(.caption2)
-        .fontWeight(.medium)
-        .lineLimit(1)
-
-      HStack(spacing: 1) {
-        ForEach(0..<5) { level in
-          RoundedRectangle(cornerRadius: 1)
-            .fill(theme.color(for: level))
-            .frame(width: 10, height: 10)
+    ScrollView(.vertical, showsIndicators: false) {
+      LazyVGrid(columns: columns, spacing: 20) {
+        ForEach(ContributionColorTheme.themes) { theme in
+          ThemePreviewListItem(
+            theme: theme,
+            isSelected: selectedThemeId == theme.id
+          ) {
+            selectedThemeId = theme.id
+          }
+          .padding(.horizontal, 4)
         }
       }
+      .padding(.horizontal, 12)
+      .padding(.top, 8)
+      .padding(.bottom, 8)
     }
-    .padding(6)
-    .background(
-      RoundedRectangle(cornerRadius: 6)
-        .fill(Color(.systemBackground))
-        .overlay(
-          RoundedRectangle(cornerRadius: 6)
-            .stroke(isSelected ? Color.blue : Color(.systemGray4), lineWidth: 2)
-        )
-    )
-    .onTapGesture {
-      onTap()
-    }
+    .frame(minHeight: 220, maxHeight: 340)  // Adjust as needed for form
   }
 }
