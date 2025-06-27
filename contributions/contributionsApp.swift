@@ -6,12 +6,22 @@
 //
 
 import SwiftUI
+import WidgetKit
 
 @main
 struct contributionsApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .onAppear {
+                    WidgetCenter.shared.reloadAllTimelines()
+                }
         }
+    }
+}
+
+struct ContributionWidgetBundle: WidgetBundle {
+    var body: some Widget {
+        ContributionWidget()
     }
 }
