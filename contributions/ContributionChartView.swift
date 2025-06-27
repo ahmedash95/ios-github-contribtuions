@@ -3,16 +3,17 @@ import SwiftUI
 
 struct ContributionChartView: View {
   let contributions: [ContributionDay]
-  let customColor: Color
+  let userSettings: UserSettings
   let compact: Bool
 
   @State private var selectedDay: ContributionDay?
   @State private var showingDetail = false
   @State private var scrollPosition: Int? = nil
+  @Environment(\.colorScheme) private var colorScheme
 
-  init(contributions: [ContributionDay], customColor: Color = .green, compact: Bool = false) {
+  init(contributions: [ContributionDay], userSettings: UserSettings, compact: Bool = false) {
     self.contributions = contributions
-    self.customColor = customColor
+    self.userSettings = userSettings
     self.compact = compact
   }
 
@@ -49,14 +50,6 @@ struct ContributionChartView: View {
         }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
-
-      HStack {
-        Text("\(totalContributions(last91Days)) contributions")
-          .font(.caption2)
-          .foregroundColor(.secondary)
-        Spacer()
-        legendView
-      }
     }
     .alert("Contribution Details", isPresented: $showingDetail) {
       Button("OK") {}
@@ -104,14 +97,6 @@ struct ContributionChartView: View {
         }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
-
-      HStack {
-        Text("\(totalContributions(last364Days)) contributions in the last year")
-          .font(.caption2)
-          .foregroundColor(.secondary)
-        Spacer()
-        legendView
-      }
     }
     .alert("Contribution Details", isPresented: $showingDetail) {
       Button("OK") {}
@@ -119,26 +104,6 @@ struct ContributionChartView: View {
       if let day = selectedDay {
         Text("\(day.contributionCount) contributions on \(formatDate(day.date))")
       }
-    }
-  }
-
-  private var legendView: some View {
-    HStack(spacing: 2) {
-      Text("Less")
-        .font(.caption2)
-        .foregroundColor(.secondary)
-
-      ForEach(0..<5) { level in
-        RoundedRectangle(cornerRadius: 1)
-          .fill(
-            level == 0 ? Color(.systemGray6) : customColor.opacity(max(0.6, Double(level) * 0.25))
-          )
-          .frame(width: 8, height: 8)
-      }
-
-      Text("More")
-        .font(.caption2)
-        .foregroundColor(.secondary)
     }
   }
 
@@ -219,11 +184,7 @@ struct ContributionChartView: View {
   }
 
   private func getColor(for count: Int) -> Color {
-    let intensity = GitHubService.shared.getContributionIntensity(count: count)
-    if intensity == 0.0 {
-      return Color(.systemGray6)
-    } else {
-      return customColor.opacity(max(0.6, intensity))
-    }
+    let level = GitHubService.shared.getContributionLevel(count: count)
+    return userSettings.colorTheme.color(for: level, isDarkMode: colorScheme == .dark)
   }
 }

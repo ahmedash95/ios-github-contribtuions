@@ -11,7 +11,7 @@ struct UserWidgetData {
   let username: String
   let avatarUrl: String?
   let contributions: [ContributionDay]
-  let customColor: String
+  let colorThemeId: String
 }
 
 struct ContributionProvider: TimelineProvider {
@@ -44,7 +44,7 @@ struct ContributionProvider: TimelineProvider {
               username: userSettings.username,
               avatarUrl: user.avatarUrl,
               contributions: contributions,
-              customColor: userSettings.customColor
+              colorThemeId: userSettings.colorThemeId
             ))
         } catch {
           continue
@@ -175,21 +175,13 @@ struct ContributionWidgetView: View {
   }
 
   private func miniContributionChart(for user: UserWidgetData) -> some View {
-    ContributionChartView(
+    let userSettings = UserSettings(username: user.username, colorThemeId: user.colorThemeId)
+    return ContributionChartView(
       contributions: user.contributions,
-      customColor: Color(hex: user.customColor),
+      userSettings: userSettings,
       compact: true
     )
     .scaleEffect(0.7)
-  }
-
-  private func getColor(for count: Int, customColor: Color) -> Color {
-    let intensity = GitHubService.shared.getContributionIntensity(count: count)
-    if intensity == 0.0 {
-      return Color(.systemGray6)
-    } else {
-      return customColor.opacity(max(0.3, intensity))
-    }
   }
 }
 
