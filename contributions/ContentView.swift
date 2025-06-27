@@ -18,7 +18,7 @@ struct ContentView: View {
   var body: some View {
     NavigationView {
       ScrollView {
-        LazyVStack(spacing: 8) {
+        LazyVStack(spacing: 6) {
           if needsTokenSetup {
             tokenSetupPrompt
           } else if userStore.users.isEmpty {
@@ -36,6 +36,7 @@ struct ContentView: View {
         }
         .padding(12)
       }
+      .background(Color(.systemGroupedBackground).ignoresSafeArea())
       .navigationTitle("")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {

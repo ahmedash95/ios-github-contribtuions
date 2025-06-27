@@ -7,9 +7,10 @@ struct UserContributionView: View {
   @State private var contributions: [ContributionDay] = []
   @State private var isLoading = true
   @State private var errorMessage = ""
+  @Environment(\.colorScheme) private var colorScheme
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 8) {
+    VStack(alignment: .leading, spacing: 0) {
       if isLoading {
         HStack {
           ProgressView()
@@ -32,22 +33,29 @@ struct UserContributionView: View {
         .frame(height: 60)
       } else {
         userHeader
+        Divider().padding(.vertical, 4)
         contributionChart
       }
     }
-    .padding(12)
+    .padding(16)
     .background(
       RoundedRectangle(cornerRadius: 12)
         .fill(Color(.systemBackground))
-        .shadow(color: .black.opacity(0.03), radius: 4, x: 0, y: 1)
+        .shadow(color: .black.opacity(0.08), radius: 10, y: 3)
+        .overlay(
+          RoundedRectangle(cornerRadius: 12)
+            .stroke(Color(.systemGray5), lineWidth: 1)
+        )
     )
+    .padding(.horizontal, 8)
+    .padding(.vertical, 4)
     .task {
       await loadData()
     }
   }
 
   private var userHeader: some View {
-    HStack(spacing: 8) {
+    HStack(spacing: 12) {
       AsyncImage(url: URL(string: user?.avatarUrl ?? "")) { image in
         image
           .resizable()
@@ -61,8 +69,13 @@ struct UserContributionView: View {
               .foregroundColor(.gray)
           )
       }
-      .frame(width: 28, height: 28)
+      .frame(width: 32, height: 32)
       .clipShape(Circle())
+      .overlay(
+        Circle()
+          .stroke(
+            userSettings.colorTheme.color(for: 4, isDarkMode: colorScheme == .dark), lineWidth: 2)
+      )
 
       VStack(alignment: .leading, spacing: 1) {
         Text(user?.name ?? user?.login ?? userSettings.username)
