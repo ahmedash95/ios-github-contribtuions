@@ -14,7 +14,7 @@ struct GitHubUser: Codable, Identifiable {
 }
 
 
-struct ContributionDay: Codable, Identifiable {
+struct ContributionDay: Codable, Identifiable, Equatable {
     let id = UUID()
     let date: String
     let contributionCount: Int
@@ -22,6 +22,10 @@ struct ContributionDay: Codable, Identifiable {
     
     enum CodingKeys: String, CodingKey {
         case date, contributionCount, color
+    }
+    
+    static func == (lhs: ContributionDay, rhs: ContributionDay) -> Bool {
+        return lhs.date == rhs.date && lhs.contributionCount == rhs.contributionCount
     }
 }
 

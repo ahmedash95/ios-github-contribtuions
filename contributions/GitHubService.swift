@@ -1,126 +1,156 @@
-import Foundation
 import Combine
+import Foundation
 
 class GitHubService: ObservableObject {
-    static let shared = GitHubService()
-    
-    private let baseURL = "https://api.github.com"
-    private let graphQLURL = "https://api.github.com/graphql"
-    
-    private var githubToken: String {
-        return KeychainHelper.shared.load() ?? ""
+  static let shared = GitHubService()
+
+  private let baseURL = "https://api.github.com"
+  private let graphQLURL = "https://api.github.com/graphql"
+
+  private var githubToken: String {
+    return KeychainHelper.shared.load() ?? ""
+  }
+
+  private var hasValidToken: Bool {
+    return !githubToken.isEmpty
+  }
+
+  func saveToken(_ token: String) -> Bool {
+    return KeychainHelper.shared.save(token)
+  }
+
+  func clearToken() -> Bool {
+    return KeychainHelper.shared.delete()
+  }
+
+  func isTokenConfigured() -> Bool {
+    return KeychainHelper.shared.exists()
+  }
+
+  private static let dateFormatter: DateFormatter = {
+    let dateFormatter = DateFormatter()
+    dateFormatter.dateFormat = "yyyy-MM-dd"
+    return dateFormatter
+  }()
+
+  func fetchUser(username: String) async throws -> GitHubUser {
+    guard let url = URL(string: "\(baseURL)/users/\(username)") else {
+      throw URLError(.badURL)
     }
-    
-    private var hasValidToken: Bool {
-        return !githubToken.isEmpty
+
+    let (data, _) = try await URLSession.shared.data(from: url)
+    return try JSONDecoder().decode(GitHubUser.self, from: data)
+  }
+
+  func fetchContributions(username: String, days: Int = 365) async throws -> [ContributionDay] {
+    guard hasValidToken else {
+      throw URLError(.userAuthenticationRequired)
     }
-    
-    func saveToken(_ token: String) -> Bool {
-        return KeychainHelper.shared.save(token)
+
+    let query = """
+      query($userName: String!, $from: DateTime!, $to: DateTime!) {
+          user(login: $userName) {
+              contributionsCollection(from: $from, to: $to) {
+                  contributionCalendar {
+                      totalContributions
+                      weeks {
+                          contributionDays {
+                              contributionCount
+                              date
+                          }
+                      }
+                  }
+              }
+          }
+      }
+      """
+
+    // Calculate date range for exactly one year
+    let calendar = Calendar.current
+    let today = Date()
+    let oneYearAgo = calendar.date(byAdding: .year, value: -1, to: today) ?? today
+
+    let isoFormatter = ISO8601DateFormatter()
+    let fromDate = isoFormatter.string(from: oneYearAgo)
+    let toDate = isoFormatter.string(from: today)
+
+    let variables: [String: Any] = [
+      "userName": username,
+      "from": fromDate,
+      "to": toDate,
+    ]
+    let requestBody: [String: Any] = [
+      "query": query,
+      "variables": variables,
+    ]
+
+    guard let url = URL(string: graphQLURL) else {
+      throw URLError(.badURL)
     }
-    
-    func clearToken() -> Bool {
-        return KeychainHelper.shared.delete()
+
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.setValue("Bearer \(githubToken)", forHTTPHeaderField: "Authorization")
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+
+    let (data, _) = try await URLSession.shared.data(for: request)
+    let response = try JSONDecoder().decode(GitHubGraphQLResponse.self, from: data)
+
+    guard let user = response.data.user else {
+      throw URLError(.userAuthenticationRequired)
     }
-    
-    func isTokenConfigured() -> Bool {
-        return KeychainHelper.shared.exists()
+
+    // Flatten all contribution days from weeks
+    var contributionMap: [String: Int] = [:]
+    for week in user.contributionsCollection.contributionCalendar.weeks {
+      for day in week.contributionDays {
+        contributionMap[day.date] = day.contributionCount
+      }
     }
-    
-    private static let dateFormatter: DateFormatter = {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        return dateFormatter
-    }()
-    
-    func fetchUser(username: String) async throws -> GitHubUser {
-        guard let url = URL(string: "\(baseURL)/users/\(username)") else {
-            throw URLError(.badURL)
-        }
-        
-        let (data, _) = try await URLSession.shared.data(from: url)
-        return try JSONDecoder().decode(GitHubUser.self, from: data)
+
+    // Generate complete year of data, filling in missing days with 0 contributions
+    let dateFormatter = DateFormatter()
+    dateFormatter.dateFormat = "yyyy-MM-dd"
+
+    var allContributions: [ContributionDay] = []
+    var currentDate = oneYearAgo
+
+    while currentDate <= today {
+      let dateString = dateFormatter.string(from: currentDate)
+      let contributionCount = contributionMap[dateString] ?? 0
+
+      allContributions.append(
+        ContributionDay(
+          date: dateString,
+          contributionCount: contributionCount,
+          color: ""
+        ))
+
+      currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate) ?? currentDate
     }
-    
-    func fetchContributions(username: String, days: Int = 112) async throws -> [ContributionDay] {
-        guard hasValidToken else {
-            throw URLError(.userAuthenticationRequired)
-        }
-        
-        let query = """
-        query($userName: String!) {
-            user(login: $userName) {
-                contributionsCollection {
-                    contributionCalendar {
-                        totalContributions
-                        weeks {
-                            contributionDays {
-                                contributionCount
-                                date
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        """
-        
-        let variables = ["userName": username]
-        let requestBody: [String: Any] = [
-            "query": query,
-            "variables": variables
-        ]
-        
-        guard let url = URL(string: graphQLURL) else {
-            throw URLError(.badURL)
-        }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(githubToken)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-        
-        let (data, _) = try await URLSession.shared.data(for: request)
-        let response = try JSONDecoder().decode(GitHubGraphQLResponse.self, from: data)
-        
-        guard let user = response.data.user else {
-            throw URLError(.userAuthenticationRequired)
-        }
-        
-        // Flatten all contribution days from weeks
-        var allContributions: [ContributionDay] = []
-        for week in user.contributionsCollection.contributionCalendar.weeks {
-            for day in week.contributionDays {
-                allContributions.append(ContributionDay(
-                    date: day.date,
-                    contributionCount: day.contributionCount,
-                    color: ""
-                ))
-            }
-        }
-        
-        // Return the most recent days
-        return Array(allContributions.suffix(days))
+
+    // Return the most recent days
+    return Array(allContributions.suffix(days))
+  }
+
+  func getContributionIntensity(count: Int) -> Double {
+    switch count {
+    case 0: return 0.0
+    case 1...3: return 0.25
+    case 4...6: return 0.5
+    case 7...9: return 0.75
+    default: return 1.0
     }
-    
-    func getContributionIntensity(count: Int) -> Double {
-        switch count {
-        case 0: return 0.0
-        case 1...3: return 0.25
-        case 4...6: return 0.5
-        case 7...9: return 0.75
-        default: return 1.0
-        }
+  }
+
+  func getContributionLevel(count: Int) -> Int {
+    switch count {
+    case 0: return 0
+    case 1...3: return 1
+    case 4...6: return 2
+    case 7...9: return 3
+    default: return 4
     }
-    
-    func getContributionLevel(count: Int) -> Int {
-        switch count {
-        case 0: return 0
-        case 1...3: return 1
-        case 4...6: return 2
-        case 7...9: return 3
-        default: return 4
-        }
-    }
+  }
 }
