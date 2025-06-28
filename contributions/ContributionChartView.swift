@@ -5,20 +5,27 @@ struct ContributionChartView: View {
   let contributions: [ContributionDay]
   let userSettings: UserSettings
   let compact: Bool
+  let isWidget: Bool
 
   @State private var selectedDay: ContributionDay?
   @State private var showingDetail = false
   @State private var scrollPosition: Int? = nil
   @Environment(\.colorScheme) private var colorScheme
 
-  init(contributions: [ContributionDay], userSettings: UserSettings, compact: Bool = false) {
+  init(
+    contributions: [ContributionDay], userSettings: UserSettings, compact: Bool = false,
+    isWidget: Bool = false
+  ) {
     self.contributions = contributions
     self.userSettings = userSettings
     self.compact = compact
+    self.isWidget = isWidget
   }
 
   var body: some View {
-    if compact {
+    if isWidget {
+      widgetChart
+    } else if compact {
       compactChart
     } else {
       regularChart
@@ -58,6 +65,28 @@ struct ContributionChartView: View {
         Text("\(day.contributionCount) contributions on \(formatDate(day.date))")
       }
     }
+  }
+
+  private var widgetChart: some View {
+    HStack(spacing: 1) {
+      ForEach(Array(githubStyleWeeks(last91Days).enumerated()), id: \.offset) { weekIndex, week in
+        VStack(spacing: 1) {
+          ForEach(0..<7, id: \.self) { dayIndex in
+            if dayIndex < week.count {
+              let day = week[dayIndex]
+              RoundedRectangle(cornerRadius: 1)
+                .fill(getColor(for: day.contributionCount))
+                .frame(width: 6, height: 6)
+            } else {
+              RoundedRectangle(cornerRadius: 1)
+                .fill(Color.clear)
+                .frame(width: 6, height: 6)
+            }
+          }
+        }
+      }
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
   }
 
   private var regularChart: some View {

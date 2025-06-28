@@ -1,7 +1,57 @@
-import Combine
+//
+//  SharedModels.swift
+//  Contribtuions Widget
+//
+//  Created by Ahmed on 28.06.25.
+//
+
 import Foundation
 import SwiftUI
-import WidgetKit
+
+// MARK: - GitHub API Models
+struct GitHubUser: Codable, Identifiable {
+  let id: Int
+  let login: String
+  let avatarUrl: String
+  let name: String?
+
+  enum CodingKeys: String, CodingKey {
+    case id, login, name
+    case avatarUrl = "avatar_url"
+  }
+}
+
+// MARK: - Shared Models for App and Widget
+struct ContributionDay: Codable, Identifiable, Equatable {
+  let id = UUID()
+  let date: String
+  let contributionCount: Int
+  let color: String
+
+  enum CodingKeys: String, CodingKey {
+    case date, contributionCount, color
+  }
+
+  static func == (lhs: ContributionDay, rhs: ContributionDay) -> Bool {
+    return lhs.date == rhs.date && lhs.contributionCount == rhs.contributionCount
+  }
+}
+
+struct UserSettings: Codable, Identifiable {
+  let username: String
+  let colorThemeId: String
+  let id: UUID
+
+  init(username: String, colorThemeId: String = "github") {
+    self.username = username
+    self.colorThemeId = colorThemeId
+    self.id = UUID()
+  }
+
+  var colorTheme: ContributionColorTheme {
+    return ContributionColorTheme.theme(for: colorThemeId)
+  }
+}
 
 // MARK: - Color System
 struct ContributionColorTheme: Codable, Identifiable {
@@ -40,54 +90,6 @@ struct ContributionColorTheme: Codable, Identifiable {
       name: "Crimson Red",
       lightColors: ["#ebedf0", "#ffb3b3", "#ff6666", "#ff3333", "#cc0000"],
       darkColors: ["#161b22", "#7c2d12", "#c2410c", "#dc2626", "#ef4444"]
-    ),
-    ContributionColorTheme(
-      id: "teal",
-      name: "Teal",
-      lightColors: ["#ebedf0", "#99e6e6", "#66cccc", "#33b3b3", "#009999"],
-      darkColors: ["#161b22", "#134e4a", "#0f766e", "#14b8a6", "#2dd4bf"]
-    ),
-    ContributionColorTheme(
-      id: "pink",
-      name: "Rose Pink",
-      lightColors: ["#ebedf0", "#ffb3d9", "#ff66b3", "#ff3380", "#cc004d"],
-      darkColors: ["#161b22", "#831843", "#be185d", "#ec4899", "#f472b6"]
-    ),
-    ContributionColorTheme(
-      id: "yellow",
-      name: "Golden Yellow",
-      lightColors: ["#ebedf0", "#fff2cc", "#ffe680", "#ffd633", "#ccaa00"],
-      darkColors: ["#161b22", "#713f12", "#a16207", "#ca8a04", "#eab308"]
-    ),
-    ContributionColorTheme(
-      id: "indigo",
-      name: "Deep Indigo",
-      lightColors: ["#ebedf0", "#c7d2fe", "#a5b4fc", "#818cf8", "#6366f1"],
-      darkColors: ["#161b22", "#312e81", "#3730a3", "#4338ca", "#6366f1"]
-    ),
-    ContributionColorTheme(
-      id: "emerald",
-      name: "Emerald Green",
-      lightColors: ["#ebedf0", "#a7f3d0", "#6ee7b7", "#34d399", "#10b981"],
-      darkColors: ["#161b22", "#064e3b", "#065f46", "#047857", "#059669"]
-    ),
-    ContributionColorTheme(
-      id: "amber",
-      name: "Warm Amber",
-      lightColors: ["#ebedf0", "#fde68a", "#fbbf24", "#f59e0b", "#d97706"],
-      darkColors: ["#161b22", "#78350f", "#92400e", "#b45309", "#d97706"]
-    ),
-    ContributionColorTheme(
-      id: "rose",
-      name: "Soft Rose",
-      lightColors: ["#ebedf0", "#fecdd3", "#fda4af", "#fb7185", "#f43f5e"],
-      darkColors: ["#161b22", "#881337", "#be123c", "#e11d48", "#f43f5e"]
-    ),
-    ContributionColorTheme(
-      id: "slate",
-      name: "Cool Slate",
-      lightColors: ["#ebedf0", "#cbd5e1", "#94a3b8", "#64748b", "#475569"],
-      darkColors: ["#161b22", "#334155", "#475569", "#64748b", "#94a3b8"]
     ),
   ]
 
@@ -133,153 +135,6 @@ extension Color {
       blue: Double(b) / 255,
       opacity: Double(a) / 255
     )
-  }
-}
-
-// MARK: - Existing Models
-struct GitHubUser: Codable, Identifiable {
-  let id: Int
-  let login: String
-  let avatarUrl: String
-  let name: String?
-
-  enum CodingKeys: String, CodingKey {
-    case id, login, name
-    case avatarUrl = "avatar_url"
-  }
-}
-
-struct ContributionDay: Codable, Identifiable, Equatable {
-  let id = UUID()
-  let date: String
-  let contributionCount: Int
-  let color: String
-
-  enum CodingKeys: String, CodingKey {
-    case date, contributionCount, color
-  }
-
-  static func == (lhs: ContributionDay, rhs: ContributionDay) -> Bool {
-    return lhs.date == rhs.date && lhs.contributionCount == rhs.contributionCount
-  }
-}
-
-// GraphQL Response Models
-struct GitHubGraphQLResponse: Codable {
-  let data: GitHubData
-}
-
-struct GitHubData: Codable {
-  let user: GitHubContributionUser?
-}
-
-struct GitHubContributionUser: Codable {
-  let contributionsCollection: ContributionsCollection
-}
-
-struct ContributionsCollection: Codable {
-  let contributionCalendar: ContributionCalendar
-}
-
-struct ContributionCalendar: Codable {
-  let totalContributions: Int
-  let weeks: [ContributionWeek]
-}
-
-struct ContributionWeek: Codable {
-  let contributionDays: [GraphQLContributionDay]
-}
-
-struct GraphQLContributionDay: Codable {
-  let contributionCount: Int
-  let date: String
-}
-
-struct UserSettings: Codable, Identifiable {
-  let username: String
-  let colorThemeId: String
-  let id: UUID
-
-  init(username: String, colorThemeId: String = "github") {
-    self.username = username
-    self.colorThemeId = colorThemeId
-    self.id = UUID()
-  }
-
-  var colorTheme: ContributionColorTheme {
-    return ContributionColorTheme.theme(for: colorThemeId)
-  }
-}
-
-@Observable
-class UserStore {
-  var users: [UserSettings] = []
-
-  private let userDefaultsKey = "SavedUsers"
-  private let dataManager = DataManager.shared
-
-  init() {
-    loadUsers()
-  }
-
-  func addUser(_ username: String, colorThemeId: String = "github") {
-    print("🔄 Main App - Adding user: \(username)")
-    let newUser = UserSettings(username: username, colorThemeId: colorThemeId)
-    users.append(newUser)
-    saveUsers()
-    print("✅ Main App - User added successfully")
-    // Fetch and cache user profile (with avatar) and reload widget
-    Task {
-      do {
-        let user = try await GitHubService.shared.fetchUser(username: username)
-        DataManager.shared.cacheUser(user, for: username)
-        print("✅ Main App - Cached user avatar URL: \(user.avatarUrl)")
-
-        // Download and cache avatar image
-        if let avatarUrl = URL(string: user.avatarUrl) {
-          do {
-            let (imageData, _) = try await URLSession.shared.data(from: avatarUrl)
-            DataManager.shared.cacheAvatar(imageData, for: username)
-            print("✅ Main App - Downloaded and cached avatar image for \(username)")
-          } catch {
-            print("❌ Main App - Failed to download avatar image for \(username): \(error)")
-          }
-        }
-
-        WidgetCenter.shared.reloadAllTimelines()
-      } catch {
-        print("❌ Main App - Failed to fetch/cache user profile for widget: \(error)")
-      }
-    }
-  }
-
-  func removeUser(_ username: String) {
-    print("🔄 Main App - Removing user: \(username)")
-    users.removeAll { $0.username == username }
-    saveUsers()
-    // Clear cache for removed user
-    dataManager.clearCache(for: username)
-    print("✅ Main App - User removed successfully")
-  }
-
-  func updateUserColor(_ username: String, colorThemeId: String) {
-    if let index = users.firstIndex(where: { $0.username == username }) {
-      users[index] = UserSettings(username: username, colorThemeId: colorThemeId)
-      saveUsers()
-    }
-  }
-
-  func updateUserOrder(_ newOrder: [UserSettings]) {
-    users = newOrder
-    saveUsers()
-  }
-
-  private func saveUsers() {
-    dataManager.saveUsers(users)
-  }
-
-  private func loadUsers() {
-    users = dataManager.getUsers()
   }
 }
 
@@ -359,39 +214,31 @@ class DataManager {
   // MARK: - User Management
   func getUsers() -> [UserSettings] {
     guard let sharedDefaults = sharedDefaults else {
-      print("❌ Main App - No shared defaults available for loading")
+      print("❌ DataManager - No shared defaults available")
       return []
     }
 
     guard let data = sharedDefaults.data(forKey: usersKey) else {
-      print("❌ Main App - No user data found in shared defaults")
+      print("❌ DataManager - No user data found in shared defaults")
       return []
     }
 
     guard let users = try? JSONDecoder().decode([UserSettings].self, from: data) else {
-      print("❌ Main App - Failed to decode user data")
+      print("❌ DataManager - Failed to decode user data")
       return []
     }
 
-    print("✅ Main App - Successfully loaded \(users.count) users from shared defaults")
+    print("✅ DataManager - Successfully loaded \(users.count) users")
     return users
   }
 
   func saveUsers(_ users: [UserSettings]) {
-    guard let sharedDefaults = sharedDefaults else {
-      print("❌ Main App - No shared defaults available for saving")
-      return
-    }
+    guard let sharedDefaults = sharedDefaults,
+      let data = try? JSONEncoder().encode(users)
+    else { return }
 
-    guard let data = try? JSONEncoder().encode(users) else {
-      print("❌ Main App - Failed to encode users data")
-      return
-    }
-
-    print("✅ Main App - Saving \(users.count) users to shared defaults")
     sharedDefaults.set(data, forKey: usersKey)
     UserDefaults.standard.set(data, forKey: usersKey)
-    print("✅ Main App - Users saved successfully")
   }
 
   // MARK: - User Caching
@@ -433,19 +280,35 @@ class DataManager {
     let cachedData = CachedAvatarData(username: username, imageData: imageData)
     if let data = try? JSONEncoder().encode(cachedData) {
       sharedDefaults.set(data, forKey: "\(avatarCacheKey)_\(username)")
-      print("✅ Main App - Cached avatar image data for \(username)")
+      print("✅ DataManager - Cached avatar image data for \(username)")
     }
   }
 
   // MARK: - Contribution Caching
   func getCachedContributions(for username: String) -> [ContributionDay]? {
-    guard let sharedDefaults = sharedDefaults,
-      let data = sharedDefaults.data(forKey: "\(cacheKey)_\(username)"),
-      let cachedData = try? JSONDecoder().decode(CachedContributionData.self, from: data),
-      !cachedData.isExpired
-    else {
+    guard let sharedDefaults = sharedDefaults else {
+      print("❌ DataManager - No shared defaults for contributions")
       return nil
     }
+
+    guard let data = sharedDefaults.data(forKey: "\(cacheKey)_\(username)") else {
+      print("❌ DataManager - No cached contributions for \(username)")
+      return nil
+    }
+
+    guard let cachedData = try? JSONDecoder().decode(CachedContributionData.self, from: data) else {
+      print("❌ DataManager - Failed to decode cached contributions for \(username)")
+      return nil
+    }
+
+    guard !cachedData.isExpired else {
+      print("❌ DataManager - Cached contributions expired for \(username)")
+      return nil
+    }
+
+    print(
+      "✅ DataManager - Successfully loaded \(cachedData.contributions.count) contributions for \(username)"
+    )
     return cachedData.contributions
   }
 
@@ -473,33 +336,37 @@ class DataManager {
       keys.forEach { sharedDefaults.removeObject(forKey: $0) }
     }
   }
+}
 
-  // MARK: - Debug Methods
-  func testAppGroupsAccess() {
-    print("🔍 Testing App Groups access...")
+// MARK: - GitHub Service (Simplified for Widget)
+class GitHubService {
+  static let shared = GitHubService()
 
-    guard let sharedDefaults = sharedDefaults else {
-      print("❌ App Groups test failed - No shared defaults available")
-      return
+  private let dataManager = DataManager.shared
+
+  private init() {}
+
+  func getContributionLevel(count: Int) -> Int {
+    switch count {
+    case 0: return 0
+    case 1...3: return 1
+    case 4...6: return 2
+    case 7...9: return 3
+    default: return 4
+    }
+  }
+
+  // Simplified fetch method for widget - only uses cached data
+  func fetchContributions(username: String, days: Int = 91, useCache: Bool = true) async throws
+    -> [ContributionDay]
+  {
+    // For widget, we only use cached data to avoid API calls
+    if let cachedContributions = dataManager.getCachedContributions(for: username) {
+      return Array(cachedContributions.suffix(days))
     }
 
-    print("✅ App Groups test passed - Shared defaults available")
-
-    // Test writing and reading a simple value
-    let testKey = "test_app_groups"
-    let testValue = "test_value"
-
-    sharedDefaults.set(testValue, forKey: testKey)
-    let readValue = sharedDefaults.string(forKey: testKey)
-
-    if readValue == testValue {
-      print("✅ App Groups test passed - Can write and read data")
-    } else {
-      print("❌ App Groups test failed - Cannot read written data")
-    }
-
-    // Clean up test data
-    sharedDefaults.removeObject(forKey: testKey)
+    // If no cached data, return empty array
+    return []
   }
 }
 

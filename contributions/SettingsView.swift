@@ -2,7 +2,7 @@ import Combine
 import SwiftUI
 
 struct SettingsView: View {
-  @ObservedObject var userStore: UserStore
+  var userStore: UserStore
   @Environment(\.dismiss) private var dismiss
 
   @State private var selectedUser: UserSettings?
@@ -152,7 +152,7 @@ struct ThemePreviewSmall: View {
 
 struct ThemePickerView: View {
   let user: UserSettings
-  @ObservedObject var userStore: UserStore
+  var userStore: UserStore
   @Environment(\.dismiss) private var dismiss
   @Environment(\.colorScheme) private var colorScheme
 

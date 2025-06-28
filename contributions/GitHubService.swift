@@ -6,6 +6,7 @@ class GitHubService: ObservableObject {
 
   private let baseURL = "https://api.github.com"
   private let graphQLURL = "https://api.github.com/graphql"
+  private let dataManager = DataManager.shared
 
   private var githubToken: String {
     return KeychainHelper.shared.load() ?? ""
@@ -34,15 +35,34 @@ class GitHubService: ObservableObject {
   }()
 
   func fetchUser(username: String) async throws -> GitHubUser {
+    // Check cache first
+    if let cachedUser = dataManager.getCachedUser(for: username) {
+      return cachedUser
+    }
+
     guard let url = URL(string: "\(baseURL)/users/\(username)") else {
       throw URLError(.badURL)
     }
 
     let (data, _) = try await URLSession.shared.data(from: url)
-    return try JSONDecoder().decode(GitHubUser.self, from: data)
+    let user = try JSONDecoder().decode(GitHubUser.self, from: data)
+
+    // Cache the user data
+    dataManager.cacheUser(user, for: username)
+
+    return user
   }
 
-  func fetchContributions(username: String, days: Int = 365) async throws -> [ContributionDay] {
+  func fetchContributions(username: String, days: Int = 365, useCache: Bool = true) async throws
+    -> [ContributionDay]
+  {
+    // Check cache first if enabled
+    if useCache {
+      if let cachedContributions = dataManager.getCachedContributions(for: username) {
+        return Array(cachedContributions.suffix(days))
+      }
+    }
+
     guard hasValidToken else {
       throw URLError(.userAuthenticationRequired)
     }
@@ -130,8 +150,12 @@ class GitHubService: ObservableObject {
       currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate) ?? currentDate
     }
 
-    // Return the most recent days
-    return Array(allContributions.suffix(days))
+    let contributions = Array(allContributions.suffix(days))
+
+    // Cache the full year of data
+    dataManager.cacheContributions(allContributions, for: username)
+
+    return contributions
   }
 
   func getContributionIntensity(count: Int) -> Double {

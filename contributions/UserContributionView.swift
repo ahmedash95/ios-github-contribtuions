@@ -56,26 +56,12 @@ struct UserContributionView: View {
 
   private var userHeader: some View {
     HStack(spacing: 12) {
-      AsyncImage(url: URL(string: user?.avatarUrl ?? "")) { image in
-        image
-          .resizable()
-          .aspectRatio(contentMode: .fit)
-      } placeholder: {
-        Circle()
-          .fill(Color.gray.opacity(0.3))
-          .overlay(
-            Image(systemName: "person.fill")
-              .font(.caption)
-              .foregroundColor(.gray)
-          )
-      }
-      .frame(width: 32, height: 32)
-      .clipShape(Circle())
-      .overlay(
-        Circle()
-          .stroke(
-            userSettings.colorTheme.color(for: 4, isDarkMode: colorScheme == .dark), lineWidth: 2)
-      )
+      CachedAvatarView(username: userSettings.username, size: 32)
+        .overlay(
+          Circle()
+            .stroke(
+              userSettings.colorTheme.color(for: 4, isDarkMode: colorScheme == .dark), lineWidth: 2)
+        )
 
       VStack(alignment: .leading, spacing: 1) {
         Text(user?.name ?? user?.login ?? userSettings.username)

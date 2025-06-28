@@ -3,7 +3,7 @@ import SwiftUI
 
 struct AddUserView: View {
   @Environment(\.dismiss) private var dismiss
-  @ObservedObject var userStore: UserStore
+  var userStore: UserStore
 
   @State private var username = ""
   @State private var selectedThemeId = "github"

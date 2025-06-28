@@ -9,7 +9,7 @@ import Combine
 import SwiftUI
 
 struct ContentView: View {
-  @StateObject private var userStore = UserStore()
+  @State private var userStore = UserStore()
   @State private var showingAddUser = false
   @State private var showingSettings = false
   @State private var showingTokenSetup = false
@@ -71,6 +71,10 @@ struct ContentView: View {
           .onDisappear {
             needsTokenSetup = !GitHubService.shared.isTokenConfigured()
           }
+      }
+      .onAppear {
+        // Test App Groups functionality
+        DataManager.shared.testAppGroupsAccess()
       }
     }
   }

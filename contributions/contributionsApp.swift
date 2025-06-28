@@ -10,18 +10,43 @@ import WidgetKit
 
 @main
 struct contributionsApp: App {
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
-                .onAppear {
-                    WidgetCenter.shared.reloadAllTimelines()
-                }
+  var body: some Scene {
+    WindowGroup {
+      ContentView()
+        .onAppear {
+          WidgetCenter.shared.reloadAllTimelines()
+          preloadAvatarsForExistingUsers()
         }
     }
+  }
+
+  private func preloadAvatarsForExistingUsers() {
+    let dataManager = DataManager.shared
+    let users = dataManager.getUsers()
+
+    for user in users {
+      // Check if we already have cached avatar data
+      if dataManager.getCachedAvatar(for: user.username) == nil {
+        // Try to fetch and cache avatar
+        Task {
+          do {
+            let githubUser = try await GitHubService.shared.fetchUser(username: user.username)
+            if let avatarUrl = URL(string: githubUser.avatarUrl) {
+              let (imageData, _) = try await URLSession.shared.data(from: avatarUrl)
+              dataManager.cacheAvatar(imageData, for: user.username)
+              print("✅ Main App - Preloaded avatar for \(user.username)")
+            }
+          } catch {
+            print("❌ Main App - Failed to preload avatar for \(user.username): \(error)")
+          }
+        }
+      }
+    }
+  }
 }
 
 struct ContributionWidgetBundle: WidgetBundle {
-    var body: some Widget {
-        ContributionWidget()
-    }
+  var body: some Widget {
+    ContributionWidget()
+  }
 }
