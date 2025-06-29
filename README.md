@@ -9,8 +9,10 @@ The GitHub Contributions iOS App is a sleek, intuitive application designed to d
 ### 1. **Shared Data Management & Caching System**
 - **DataManager**: Centralized data management class accessible by both app and widget
 - **App Groups**: Shared UserDefaults between app and widget using `group.com.contributions.app`
-- **Caching System**: 1-hour cache for GitHub API responses to improve performance
-- **Automatic Cache Invalidation**: Cache expires after 1 hour and is cleared when users are removed
+- **Persistent Caching System**: Data is cached indefinitely and never deleted, ensuring widgets always have data to display
+- **Smart Refresh Strategy**: Data refreshes every hour but keeps old data as fallback if refresh fails
+- **Network Resilience**: App continues to work even with network issues by using cached data
+- **Background Refresh**: Automatic hourly refresh with timer-based updates
 - **Modern SwiftUI**: Uses the new `@Observable` macro for reactive state management
 
 ### 2. **iOS Widget Support**
@@ -141,9 +143,11 @@ AppIntent.swift
 ## 🚀 Performance Benefits
 
 ### Caching Strategy
-- **1-Hour Cache**: Reduces API calls by 95%+
-- **Smart Invalidation**: Cache cleared when users are removed
-- **Background Refresh**: Widget updates without user interaction
+- **Persistent Cache**: Data is never deleted, ensuring 100% uptime for widgets
+- **Smart Refresh**: Reduces API calls by 95%+ while keeping data fresh
+- **Network Resilience**: App works offline using cached data as fallback
+- **Background Refresh**: Automatic hourly updates without user interaction
+- **Graceful Degradation**: Failed refreshes don't break the UI
 
 ### Memory Optimization
 - **Shared Resources**: Models shared between app and widget

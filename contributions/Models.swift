@@ -211,15 +211,27 @@ struct UserSettings: Codable, Identifiable {
   }
 }
 
-@Observable
-class UserStore {
-  var users: [UserSettings] = []
+class UserStore: ObservableObject {
+  @Published var users: [UserSettings] = []
 
   private let userDefaultsKey = "SavedUsers"
   private let dataManager = DataManager.shared
+  private var refreshTimer: Timer?
 
   init() {
     loadUsers()
+    startBackgroundRefresh()
+  }
+
+  deinit {
+    refreshTimer?.invalidate()
+  }
+
+  private func startBackgroundRefresh() {
+    // Refresh every hour
+    refreshTimer = Timer.scheduledTimer(withTimeInterval: 3600, repeats: true) { _ in
+      self.refreshAllUsersData()
+    }
   }
 
   func addUser(_ username: String, colorThemeId: String = "github") {
@@ -283,6 +295,56 @@ class UserStore {
   private func loadUsers() {
     users = dataManager.getUsers()
   }
+
+  // Background refresh method to update cached data
+  func refreshAllUsersData() {
+    print("🔄 Main App - Starting background refresh for all users")
+
+    Task {
+      for user in users {
+        do {
+          // Refresh user data if needed
+          if dataManager.shouldRefreshUser(for: user.username) {
+            print("🔄 Main App - Refreshing user data for \(user.username)")
+            let userData = try await GitHubService.shared.fetchUser(username: user.username)
+            dataManager.cacheUser(userData, for: user.username)
+
+            // Refresh avatar if needed
+            if dataManager.shouldRefreshAvatar(for: user.username) {
+              if let avatarUrl = URL(string: userData.avatarUrl) {
+                do {
+                  let (imageData, _) = try await URLSession.shared.data(from: avatarUrl)
+                  dataManager.cacheAvatar(imageData, for: user.username)
+                  print("✅ Main App - Refreshed avatar for \(user.username)")
+                } catch {
+                  print(
+                    "⚠️ Main App - Failed to refresh avatar for \(user.username), keeping cached version"
+                  )
+                }
+              }
+            }
+          }
+
+          // Refresh contributions if needed
+          if dataManager.shouldRefreshContributions(for: user.username) {
+            print("🔄 Main App - Refreshing contributions for \(user.username)")
+            let contributions = try await GitHubService.shared.fetchContributions(
+              username: user.username)
+            dataManager.cacheContributions(contributions, for: user.username)
+            print("✅ Main App - Refreshed contributions for \(user.username)")
+          }
+        } catch {
+          print(
+            "⚠️ Main App - Failed to refresh data for \(user.username), keeping cached version: \(error)"
+          )
+        }
+      }
+
+      // Reload widget after refresh attempts
+      WidgetCenter.shared.reloadAllTimelines()
+      print("✅ Main App - Background refresh completed")
+    }
+  }
 }
 
 // MARK: - Caching System
@@ -290,18 +352,24 @@ struct CachedContributionData: Codable {
   let username: String
   let contributions: [ContributionDay]
   let timestamp: Date
-  let expiresAt: Date
+  var lastRefreshAttempt: Date
 
   init(username: String, contributions: [ContributionDay]) {
     self.username = username
     self.contributions = contributions
     self.timestamp = Date()
-    // Cache for 1 hour
-    self.expiresAt = Calendar.current.date(byAdding: .hour, value: 1, to: timestamp) ?? timestamp
+    self.lastRefreshAttempt = Date()
   }
 
-  var isExpired: Bool {
-    return Date() > expiresAt
+  // Check if we should attempt to refresh (every hour)
+  var shouldRefresh: Bool {
+    let oneHourAgo = Calendar.current.date(byAdding: .hour, value: -1, to: Date()) ?? Date()
+    return lastRefreshAttempt < oneHourAgo
+  }
+
+  // Update the refresh attempt timestamp without changing the data
+  mutating func markRefreshAttempt() {
+    self.lastRefreshAttempt = Date()
   }
 }
 
@@ -309,18 +377,24 @@ struct CachedUserData: Codable {
   let username: String
   let user: GitHubUser
   let timestamp: Date
-  let expiresAt: Date
+  var lastRefreshAttempt: Date
 
   init(username: String, user: GitHubUser) {
     self.username = username
     self.user = user
     self.timestamp = Date()
-    // Cache for 24 hours (user data changes less frequently)
-    self.expiresAt = Calendar.current.date(byAdding: .day, value: 1, to: timestamp) ?? timestamp
+    self.lastRefreshAttempt = Date()
   }
 
-  var isExpired: Bool {
-    return Date() > expiresAt
+  // Check if we should attempt to refresh (every 24 hours for user data)
+  var shouldRefresh: Bool {
+    let oneDayAgo = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
+    return lastRefreshAttempt < oneDayAgo
+  }
+
+  // Update the refresh attempt timestamp without changing the data
+  mutating func markRefreshAttempt() {
+    self.lastRefreshAttempt = Date()
   }
 }
 
@@ -328,24 +402,29 @@ struct CachedAvatarData: Codable {
   let username: String
   let imageData: Data
   let timestamp: Date
-  let expiresAt: Date
+  var lastRefreshAttempt: Date
 
   init(username: String, imageData: Data) {
     self.username = username
     self.imageData = imageData
     self.timestamp = Date()
-    // Cache avatar for 7 days (avatars don't change often)
-    self.expiresAt = Calendar.current.date(byAdding: .day, value: 7, to: timestamp) ?? timestamp
+    self.lastRefreshAttempt = Date()
   }
 
-  var isExpired: Bool {
-    return Date() > expiresAt
+  // Check if we should attempt to refresh (every 7 days for avatars)
+  var shouldRefresh: Bool {
+    let oneWeekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+    return lastRefreshAttempt < oneWeekAgo
+  }
+
+  // Update the refresh attempt timestamp without changing the data
+  mutating func markRefreshAttempt() {
+    self.lastRefreshAttempt = Date()
   }
 }
 
 // MARK: - Shared Data Manager
-@Observable
-class DataManager {
+class DataManager: ObservableObject {
   static let shared = DataManager()
 
   private let sharedDefaults: UserDefaults?
@@ -400,12 +479,21 @@ class DataManager {
   func getCachedUser(for username: String) -> GitHubUser? {
     guard let sharedDefaults = sharedDefaults,
       let data = sharedDefaults.data(forKey: "\(userCacheKey)_\(username)"),
-      let cachedData = try? JSONDecoder().decode(CachedUserData.self, from: data),
-      !cachedData.isExpired
+      let cachedData = try? JSONDecoder().decode(CachedUserData.self, from: data)
     else {
       return nil
     }
     return cachedData.user
+  }
+
+  func shouldRefreshUser(for username: String) -> Bool {
+    guard let sharedDefaults = sharedDefaults,
+      let data = sharedDefaults.data(forKey: "\(userCacheKey)_\(username)"),
+      let cachedData = try? JSONDecoder().decode(CachedUserData.self, from: data)
+    else {
+      return true  // No cached data, should refresh
+    }
+    return cachedData.shouldRefresh
   }
 
   func cacheUser(_ user: GitHubUser, for username: String) {
@@ -417,16 +505,39 @@ class DataManager {
     }
   }
 
+  func markUserRefreshAttempt(for username: String) {
+    guard let sharedDefaults = sharedDefaults,
+      let data = sharedDefaults.data(forKey: "\(userCacheKey)_\(username)"),
+      var cachedData = try? JSONDecoder().decode(CachedUserData.self, from: data)
+    else {
+      return
+    }
+
+    cachedData.markRefreshAttempt()
+    if let updatedData = try? JSONEncoder().encode(cachedData) {
+      sharedDefaults.set(updatedData, forKey: "\(userCacheKey)_\(username)")
+    }
+  }
+
   // MARK: - Avatar Caching
   func getCachedAvatar(for username: String) -> Data? {
     guard let sharedDefaults = sharedDefaults,
       let data = sharedDefaults.data(forKey: "\(avatarCacheKey)_\(username)"),
-      let cachedData = try? JSONDecoder().decode(CachedAvatarData.self, from: data),
-      !cachedData.isExpired
+      let cachedData = try? JSONDecoder().decode(CachedAvatarData.self, from: data)
     else {
       return nil
     }
     return cachedData.imageData
+  }
+
+  func shouldRefreshAvatar(for username: String) -> Bool {
+    guard let sharedDefaults = sharedDefaults,
+      let data = sharedDefaults.data(forKey: "\(avatarCacheKey)_\(username)"),
+      let cachedData = try? JSONDecoder().decode(CachedAvatarData.self, from: data)
+    else {
+      return true  // No cached data, should refresh
+    }
+    return cachedData.shouldRefresh
   }
 
   func cacheAvatar(_ imageData: Data, for username: String) {
@@ -439,16 +550,39 @@ class DataManager {
     }
   }
 
+  func markAvatarRefreshAttempt(for username: String) {
+    guard let sharedDefaults = sharedDefaults,
+      let data = sharedDefaults.data(forKey: "\(avatarCacheKey)_\(username)"),
+      var cachedData = try? JSONDecoder().decode(CachedAvatarData.self, from: data)
+    else {
+      return
+    }
+
+    cachedData.markRefreshAttempt()
+    if let updatedData = try? JSONEncoder().encode(cachedData) {
+      sharedDefaults.set(updatedData, forKey: "\(avatarCacheKey)_\(username)")
+    }
+  }
+
   // MARK: - Contribution Caching
   func getCachedContributions(for username: String) -> [ContributionDay]? {
     guard let sharedDefaults = sharedDefaults,
       let data = sharedDefaults.data(forKey: "\(cacheKey)_\(username)"),
-      let cachedData = try? JSONDecoder().decode(CachedContributionData.self, from: data),
-      !cachedData.isExpired
+      let cachedData = try? JSONDecoder().decode(CachedContributionData.self, from: data)
     else {
       return nil
     }
     return cachedData.contributions
+  }
+
+  func shouldRefreshContributions(for username: String) -> Bool {
+    guard let sharedDefaults = sharedDefaults,
+      let data = sharedDefaults.data(forKey: "\(cacheKey)_\(username)"),
+      let cachedData = try? JSONDecoder().decode(CachedContributionData.self, from: data)
+    else {
+      return true  // No cached data, should refresh
+    }
+    return cachedData.shouldRefresh
   }
 
   func cacheContributions(_ contributions: [ContributionDay], for username: String) {
@@ -457,6 +591,20 @@ class DataManager {
     let cachedData = CachedContributionData(username: username, contributions: contributions)
     if let data = try? JSONEncoder().encode(cachedData) {
       sharedDefaults.set(data, forKey: "\(cacheKey)_\(username)")
+    }
+  }
+
+  func markContributionsRefreshAttempt(for username: String) {
+    guard let sharedDefaults = sharedDefaults,
+      let data = sharedDefaults.data(forKey: "\(cacheKey)_\(username)"),
+      var cachedData = try? JSONDecoder().decode(CachedContributionData.self, from: data)
+    else {
+      return
+    }
+
+    cachedData.markRefreshAttempt()
+    if let updatedData = try? JSONEncoder().encode(cachedData) {
+      sharedDefaults.set(updatedData, forKey: "\(cacheKey)_\(username)")
     }
   }
 

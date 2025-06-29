@@ -9,7 +9,7 @@ import Combine
 import SwiftUI
 
 struct ContentView: View {
-  @State private var userStore = UserStore()
+  @EnvironmentObject var userStore: UserStore
   @State private var showingAddUser = false
   @State private var showingSettings = false
   @State private var showingTokenSetup = false

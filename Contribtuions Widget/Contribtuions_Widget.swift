@@ -164,11 +164,11 @@ struct Contribtuions_WidgetEntryView: View {
 
   private var noCachedDataView: some View {
     VStack(spacing: 8) {
-      Image(systemName: "arrow.up.circle")
+      Image(systemName: "clock.arrow.circlepath")
         .font(.system(size: 24))
         .foregroundColor(.secondary)
 
-      Text("Open app to load data")
+      Text("Loading...")
         .font(.caption)
         .foregroundColor(.secondary)
         .multilineTextAlignment(.center)
@@ -328,7 +328,7 @@ struct UserWeekRow: View {
         HStack(spacing: boxSpacing) {
           ForEach((0..<7).reversed(), id: \.self) { _ in
             RoundedRectangle(cornerRadius: boxCornerRadius)
-              .fill(Color(.systemGray5))
+              .fill(Color(.systemGray6))
               .frame(width: boxSize, height: boxSize)
               .overlay(
                 RoundedRectangle(cornerRadius: boxCornerRadius)

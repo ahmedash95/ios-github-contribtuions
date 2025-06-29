@@ -10,12 +10,23 @@ import WidgetKit
 
 @main
 struct contributionsApp: App {
+  @StateObject private var userStore = UserStore()
+
   var body: some Scene {
     WindowGroup {
       ContentView()
+        .environmentObject(userStore)
         .onAppear {
           WidgetCenter.shared.reloadAllTimelines()
           preloadAvatarsForExistingUsers()
+          // Trigger background refresh when app becomes active
+          userStore.refreshAllUsersData()
+        }
+        .onReceive(
+          NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)
+        ) { _ in
+          // Refresh data when app becomes active
+          userStore.refreshAllUsersData()
         }
     }
   }
