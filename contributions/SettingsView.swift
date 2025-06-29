@@ -1,5 +1,6 @@
 import Combine
 import SwiftUI
+import WidgetKit
 
 struct SettingsView: View {
   var userStore: UserStore
@@ -9,6 +10,7 @@ struct SettingsView: View {
   @State private var showingThemePicker = false
   @State private var showingTokenSetup = false
   @State private var showingTokenAlert = false
+  @State private var showingFlushCacheAlert = false
 
   var body: some View {
     NavigationView {
@@ -35,6 +37,26 @@ struct SettingsView: View {
             Button("Remove Token", role: .destructive) {
               showingTokenAlert = true
             }
+          }
+        }
+
+        Section("Cache Management") {
+          HStack {
+            Image(systemName: "trash.fill")
+              .foregroundColor(.orange)
+            VStack(alignment: .leading) {
+              Text("Flush Cache")
+                .font(.headline)
+              Text("Remove all cached data and fetch fresh data")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            }
+            Spacer()
+            Button("Clear All") {
+              showingFlushCacheAlert = true
+            }
+            .buttonStyle(.bordered)
+            .foregroundColor(.orange)
           }
         }
 
@@ -119,6 +141,18 @@ struct SettingsView: View {
       } message: {
         Text(
           "This will remove your GitHub token from the secure Keychain. You'll need to set it up again to view contribution data."
+        )
+      }
+      .alert("Flush Cache", isPresented: $showingFlushCacheAlert) {
+        Button("Cancel", role: .cancel) {}
+        Button("Clear All", role: .destructive) {
+          DataManager.shared.clearCache()
+          // Reload widget to reflect the cleared cache
+          WidgetCenter.shared.reloadAllTimelines()
+        }
+      } message: {
+        Text(
+          "This will remove all cached contribution data, user profiles, and avatars. Fresh data will be fetched the next time you view contributions."
         )
       }
     }
