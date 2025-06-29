@@ -70,6 +70,22 @@ class GitHubService: ObservableObject {
     }
   }
 
+  // Force refresh user data, bypassing cache
+  func fetchUserForceRefresh(username: String) async throws -> GitHubUser {
+    print("🔄 GitHubService - Force refreshing user data for \(username)")
+
+    guard let url = URL(string: "\(baseURL)/users/\(username)") else {
+      throw URLError(.badURL)
+    }
+
+    let (data, _) = try await URLSession.shared.data(from: url)
+    let user = try JSONDecoder().decode(GitHubUser.self, from: data)
+
+    // Cache the fresh user data
+    dataManager.cacheUser(user, for: username)
+    return user
+  }
+
   func fetchContributions(username: String, days: Int = 365, useCache: Bool = true) async throws
     -> [ContributionDay]
   {
@@ -196,6 +212,107 @@ class GitHubService: ObservableObject {
       // If no cached data, throw the error
       throw error
     }
+  }
+
+  // Force refresh contributions, bypassing cache
+  func fetchContributionsForceRefresh(username: String, days: Int = 365) async throws
+    -> [ContributionDay]
+  {
+    print("🔄 GitHubService - Force refreshing contributions for \(username)")
+
+    guard hasValidToken else {
+      throw URLError(.userAuthenticationRequired)
+    }
+
+    let query = """
+      query($userName: String!, $from: DateTime!, $to: DateTime!) {
+          user(login: $userName) {
+              contributionsCollection(from: $from, to: $to) {
+                  contributionCalendar {
+                      totalContributions
+                      weeks {
+                          contributionDays {
+                              contributionCount
+                              date
+                          }
+                      }
+                  }
+              }
+          }
+      }
+      """
+
+    // Calculate date range for exactly one year
+    let calendar = Calendar.current
+    let today = Date()
+    let oneYearAgo = calendar.date(byAdding: .year, value: -1, to: today) ?? today
+
+    let isoFormatter = ISO8601DateFormatter()
+    let fromDate = isoFormatter.string(from: oneYearAgo)
+    let toDate = isoFormatter.string(from: today)
+
+    let variables: [String: Any] = [
+      "userName": username,
+      "from": fromDate,
+      "to": toDate,
+    ]
+    let requestBody: [String: Any] = [
+      "query": query,
+      "variables": variables,
+    ]
+
+    guard let url = URL(string: graphQLURL) else {
+      throw URLError(.badURL)
+    }
+
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.setValue("Bearer \(githubToken)", forHTTPHeaderField: "Authorization")
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+
+    let (data, _) = try await URLSession.shared.data(for: request)
+    let response = try JSONDecoder().decode(GitHubGraphQLResponse.self, from: data)
+
+    guard let user = response.data.user else {
+      throw URLError(.userAuthenticationRequired)
+    }
+
+    // Flatten all contribution days from weeks
+    var contributionMap: [String: Int] = [:]
+    for week in user.contributionsCollection.contributionCalendar.weeks {
+      for day in week.contributionDays {
+        contributionMap[day.date] = day.contributionCount
+      }
+    }
+
+    // Generate complete year of data, filling in missing days with 0 contributions
+    let dateFormatter = DateFormatter()
+    dateFormatter.dateFormat = "yyyy-MM-dd"
+
+    var allContributions: [ContributionDay] = []
+    var currentDate = oneYearAgo
+
+    while currentDate <= today {
+      let dateString = dateFormatter.string(from: currentDate)
+      let contributionCount = contributionMap[dateString] ?? 0
+
+      allContributions.append(
+        ContributionDay(
+          date: dateString,
+          contributionCount: contributionCount,
+          color: ""
+        ))
+
+      currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate) ?? currentDate
+    }
+
+    let contributions = Array(allContributions.suffix(days))
+
+    // Cache the fresh data
+    dataManager.cacheContributions(allContributions, for: username)
+
+    return contributions
   }
 
   func getContributionIntensity(count: Int) -> Double {

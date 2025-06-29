@@ -3,6 +3,7 @@ import SwiftUI
 
 struct UserContributionView: View {
   let userSettings: UserSettings
+  let forceRefresh: Bool
   @State private var user: GitHubUser?
   @State private var contributions: [ContributionDay] = []
   @State private var isLoading = true
@@ -50,6 +51,11 @@ struct UserContributionView: View {
     .padding(.vertical, 4)
     .task {
       await loadData()
+    }
+    .onChange(of: forceRefresh) { _ in
+      Task {
+        await loadData()
+      }
     }
   }
 
@@ -103,11 +109,31 @@ struct UserContributionView: View {
 
   private func loadData() async {
     do {
-      async let userFetch = GitHubService.shared.fetchUser(username: userSettings.username)
-      async let contributionsFetch = GitHubService.shared.fetchContributions(
-        username: userSettings.username)
+      let userFetch: Task<GitHubUser, Error>
+      let contributionsFetch: Task<[ContributionDay], Error>
 
-      let (fetchedUser, fetchedContributions) = try await (userFetch, contributionsFetch)
+      if forceRefresh {
+        // Use force refresh methods that bypass cache
+        userFetch = Task {
+          try await GitHubService.shared.fetchUserForceRefresh(username: userSettings.username)
+        }
+        contributionsFetch = Task {
+          try await GitHubService.shared.fetchContributionsForceRefresh(
+            username: userSettings.username)
+        }
+      } else {
+        // Use normal methods that respect cache
+        userFetch = Task {
+          try await GitHubService.shared.fetchUser(username: userSettings.username)
+        }
+        contributionsFetch = Task {
+          try await GitHubService.shared.fetchContributions(username: userSettings.username)
+        }
+      }
+
+      let (fetchedUser, fetchedContributions) = try await (
+        userFetch.value, contributionsFetch.value
+      )
 
       await MainActor.run {
         self.user = fetchedUser

@@ -345,6 +345,47 @@ class UserStore: ObservableObject {
       print("✅ Main App - Background refresh completed")
     }
   }
+
+  // Async version for pull-to-refresh that forces complete refresh
+  func refreshAllUsersDataAsync() async {
+    print("🔄 Main App - Starting forced refresh for all users (pull-to-refresh)")
+
+    for user in users {
+      do {
+        // Force refresh user data
+        print("🔄 Main App - Forcing refresh of user data for \(user.username)")
+        let userData = try await GitHubService.shared.fetchUserForceRefresh(username: user.username)
+
+        // Force refresh avatar
+        if let avatarUrl = URL(string: userData.avatarUrl) {
+          do {
+            let (imageData, _) = try await URLSession.shared.data(from: avatarUrl)
+            dataManager.cacheAvatar(imageData, for: user.username)
+            print("✅ Main App - Refreshed avatar for \(user.username)")
+          } catch {
+            print(
+              "⚠️ Main App - Failed to refresh avatar for \(user.username), keeping cached version"
+            )
+          }
+        }
+
+        // Force refresh contributions
+        print("🔄 Main App - Forcing refresh of contributions for \(user.username)")
+        let contributions = try await GitHubService.shared.fetchContributionsForceRefresh(
+          username: user.username)
+        dataManager.cacheContributions(contributions, for: user.username)
+        print("✅ Main App - Refreshed contributions for \(user.username)")
+      } catch {
+        print(
+          "⚠️ Main App - Failed to refresh data for \(user.username): \(error)"
+        )
+      }
+    }
+
+    // Reload widget after refresh attempts
+    WidgetCenter.shared.reloadAllTimelines()
+    print("✅ Main App - Forced refresh completed")
+  }
 }
 
 // MARK: - Caching System

@@ -7,6 +7,7 @@
 
 import Combine
 import SwiftUI
+import WidgetKit
 
 struct ContentView: View {
   @EnvironmentObject var userStore: UserStore
@@ -14,6 +15,7 @@ struct ContentView: View {
   @State private var showingSettings = false
   @State private var showingTokenSetup = false
   @State private var needsTokenSetup = !GitHubService.shared.isTokenConfigured()
+  @State private var isRefreshing = false
 
   var body: some View {
     NavigationView {
@@ -25,7 +27,7 @@ struct ContentView: View {
             emptyState
           } else {
             ForEach(userStore.users, id: \.username) { userSettings in
-              UserContributionView(userSettings: userSettings)
+              UserContributionView(userSettings: userSettings, forceRefresh: isRefreshing)
                 .contextMenu {
                   Button("Remove User", role: .destructive) {
                     userStore.removeUser(userSettings.username)
@@ -35,6 +37,9 @@ struct ContentView: View {
           }
         }
         .padding(12)
+      }
+      .refreshable {
+        await refreshAllData()
       }
       .background(Color(.systemGroupedBackground).ignoresSafeArea())
       .navigationTitle("")
@@ -77,6 +82,21 @@ struct ContentView: View {
         DataManager.shared.testAppGroupsAccess()
       }
     }
+  }
+
+  private func refreshAllData() async {
+    isRefreshing = true
+
+    // Clear all cache to force fresh data fetch
+    DataManager.shared.clearCache()
+
+    // Refresh all users data
+    await userStore.refreshAllUsersDataAsync()
+
+    // Reload widget timelines
+    WidgetCenter.shared.reloadAllTimelines()
+
+    isRefreshing = false
   }
 
   private var tokenSetupPrompt: some View {
