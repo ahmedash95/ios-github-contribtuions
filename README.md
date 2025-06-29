@@ -4,6 +4,9 @@
   <img src="resources/icon.png" width="128" height="128" alt="App Icon">
 </p>
 
+> [!NOTE]
+> Welcome! This project was vibe coded with Cursor by an amateur Swift developer learning the ropes. While the code may not be perfect and could benefit from some refactoring, it's built with care and enthusiasm. Your feedback, suggestions, and contributions to help improve this project would mean the world to me. Thank you for taking the time to explore this little corner of my coding journey! 🚀
+
 ## Screenshots
 
 | <img src="resources/screenshots/ios/en-US_display_69_01.jpg" width="300" height="600" alt="Screenshot 1"> | <img src="resources/screenshots/ios/en-US_display_69_02.jpg" width="300" height="600" alt="Screenshot 2"> | <img src="resources/screenshots/ios/en-US_display_69_03.jpg" width="300" height="600" alt="Screenshot 3"> |
