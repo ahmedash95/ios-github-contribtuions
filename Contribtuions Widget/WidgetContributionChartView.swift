@@ -38,6 +38,7 @@ struct WidgetContributionChartView: View {
               RoundedRectangle(cornerRadius: 2)
                 .fill(getColor(for: day.contributionCount))
                 .frame(width: tileSize, height: tileSize)
+                .shadow(color: Color.black.opacity(0.08), radius: 1, y: 1)
             } else {
               Color.clear.frame(width: tileSize, height: tileSize)
             }

@@ -266,6 +266,8 @@ class UserStore {
     if let index = users.firstIndex(where: { $0.username == username }) {
       users[index] = UserSettings(username: username, colorThemeId: colorThemeId)
       saveUsers()
+      // Reload widget to reflect the new theme
+      WidgetCenter.shared.reloadAllTimelines()
     }
   }
 

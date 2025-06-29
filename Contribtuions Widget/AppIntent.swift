@@ -11,23 +11,18 @@ import WidgetKit
 struct ConfigurationAppIntent: WidgetConfigurationIntent {
   static var title: LocalizedStringResource { "Configuration" }
   static var description: IntentDescription {
-    "Configure which GitHub user's contributions to display"
+    "Select one or more GitHub users. Small widget shows the first selected user; medium widget shows all selected users."
   }
 
-  @Parameter(title: "Selected User", optionsProvider: UserOptionsProvider())
-  var selectedUsername: String?
-
-  @Parameter(title: "Display Mode", default: "single")
-  var displayMode: String
+  @Parameter(title: "Selected Users", optionsProvider: UserOptionsProvider())
+  var selectedUsernames: [String]?
 
   init() {
-    self.selectedUsername = nil
-    self.displayMode = "single"
+    self.selectedUsernames = nil
   }
 
-  init(selectedUsername: String?, displayMode: String = "single") {
-    self.selectedUsername = selectedUsername
-    self.displayMode = displayMode
+  init(selectedUsernames: [String]? = nil) {
+    self.selectedUsernames = selectedUsernames
   }
 }
 

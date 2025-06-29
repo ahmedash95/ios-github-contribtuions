@@ -45,6 +45,8 @@ class KeychainHelper {
     else {
       return nil
     }
+      
+    print("Token is: \(token)")
 
     return token
   }

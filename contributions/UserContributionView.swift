@@ -32,8 +32,7 @@ struct UserContributionView: View {
         }
         .frame(height: 60)
       } else {
-        userHeader
-        Divider().padding(.vertical, 4)
+        userHeader.padding(.bottom, 4)
         contributionChart
       }
     }

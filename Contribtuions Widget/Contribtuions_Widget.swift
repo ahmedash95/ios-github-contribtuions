@@ -11,7 +11,8 @@ import WidgetKit
 struct Provider: AppIntentTimelineProvider {
   func placeholder(in context: Context) -> ContributionEntry {
     ContributionEntry(
-      date: Date(), configuration: ConfigurationAppIntent(), contributions: [], users: [])
+      date: Date(), configuration: ConfigurationAppIntent(selectedUsernames: ["testuser"]),
+      contributions: [], users: [])
   }
 
   func snapshot(for configuration: ConfigurationAppIntent, in context: Context) async
@@ -21,11 +22,19 @@ struct Provider: AppIntentTimelineProvider {
     let users = dataManager.getUsers()
 
     print("🔍 Widget Snapshot - Users count: \(users.count)")
-    print("🔍 Widget Snapshot - Selected username: \(configuration.selectedUsername ?? "nil")")
+
+    // Get selected users based on widget family
+    let selectedUsers =
+      context.family == .systemSmall
+      ? (configuration.selectedUsernames?.prefix(1).map { $0 } ?? [])
+      : (configuration.selectedUsernames ?? [])
+
+    print("🔍 Widget Snapshot - Selected users: \(selectedUsers)")
 
     var contributions: [ContributionDay] = []
-    if let username = configuration.selectedUsername, !username.isEmpty {
-      contributions = dataManager.getCachedContributions(for: username) ?? []
+    // For small widget or single user in medium widget, get contributions for the first selected user
+    if let firstUsername = selectedUsers.first {
+      contributions = dataManager.getCachedContributions(for: firstUsername) ?? []
       print("🔍 Widget Snapshot - Cached contributions count: \(contributions.count)")
     }
 
@@ -40,13 +49,21 @@ struct Provider: AppIntentTimelineProvider {
     let users = dataManager.getUsers()
 
     print("🔍 Widget Timeline - Users count: \(users.count)")
-    print("🔍 Widget Timeline - Selected username: \(configuration.selectedUsername ?? "nil")")
+
+    // Get selected users based on widget family
+    let selectedUsers =
+      context.family == .systemSmall
+      ? (configuration.selectedUsernames?.prefix(1).map { $0 } ?? [])
+      : (configuration.selectedUsernames ?? [])
+
+    print("🔍 Widget Timeline - Selected users: \(selectedUsers)")
 
     var contributions: [ContributionDay] = []
 
     // Widget only uses cached data - no API calls
-    if let username = configuration.selectedUsername, !username.isEmpty {
-      contributions = dataManager.getCachedContributions(for: username) ?? []
+    // For small widget or single user in medium widget, get contributions for the first selected user
+    if let firstUsername = selectedUsers.first {
+      contributions = dataManager.getCachedContributions(for: firstUsername) ?? []
       print("🔍 Widget Timeline - Cached contributions count: \(contributions.count)")
     }
 
@@ -74,14 +91,15 @@ struct Contribtuions_WidgetEntryView: View {
   var body: some View {
     if entry.users.isEmpty {
       emptyStateView
-    } else if entry.configuration.selectedUsername == nil
-      || entry.configuration.selectedUsername?.isEmpty == true
-    {
-      noUserSelectedView
-    } else if entry.contributions.isEmpty {
-      noCachedDataView
     } else {
-      contributionView
+      switch family {
+      case .systemSmall:
+        smallWidgetView
+      case .systemMedium:
+        mediumWidgetView
+      default:
+        smallWidgetView
+      }
     }
   }
 
@@ -96,6 +114,39 @@ struct Contribtuions_WidgetEntryView: View {
         .foregroundColor(.secondary)
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
+  }
+
+  private var smallWidgetView: some View {
+    Group {
+      let username = entry.configuration.selectedUsernames?.first
+      if username == nil || username?.isEmpty == true {
+        noUserSelectedView
+      } else if entry.contributions.isEmpty {
+        noCachedDataView
+      } else {
+        singleUserChartView
+      }
+    }
+  }
+
+  private var mediumWidgetView: some View {
+    Group {
+      let selectedUsers = getSelectedUsers()
+
+      if selectedUsers.isEmpty {
+        noUserSelectedView
+      } else if selectedUsers.count == 1 {
+        // Single user - show full chart
+        if entry.contributions.isEmpty {
+          noCachedDataView
+        } else {
+          singleUserChartView
+        }
+      } else {
+        // Multiple users - show list
+        multipleUsersListView(users: selectedUsers)
+      }
+    }
   }
 
   private var noUserSelectedView: some View {
@@ -125,7 +176,7 @@ struct Contribtuions_WidgetEntryView: View {
     .frame(maxWidth: .infinity, maxHeight: .infinity)
   }
 
-  private var contributionView: some View {
+  private var singleUserChartView: some View {
     GeometryReader { geo in
       let (rowsCount, columnsCount): (Int, Int) = {
         switch family {
@@ -136,28 +187,27 @@ struct Contribtuions_WidgetEntryView: View {
       }()
       ZStack(alignment: .topLeading) {
         // Chart fills the widget
-        if let username = entry.configuration.selectedUsername,
-          let user = entry.users.first(where: { $0.username == username })
-        {
+        let selectedUsers = getSelectedUsers()
+        if let firstUser = selectedUsers.first {
           WidgetContributionChartView(
             contributions: entry.contributions,
-            userSettings: user,
+            userSettings: firstUser,
             size: geo.size,
             rowsCount: rowsCount,
             columnsCount: columnsCount
           )
-          .frame(width: geo.size.width, height: geo.size.height)
+          // .frame(width: geo.size.width, height: geo.size.height)
         }
         // Overlay: avatar + username
         HStack(spacing: 6) {
-          if let username = entry.configuration.selectedUsername {
-            CachedAvatarView(username: username, size: 22)
+          if let firstUser = getSelectedUsers().first {
+            CachedAvatarView(username: firstUser.username, size: 22)
+            Text(firstUser.username)
+              .font(.system(size: 12, weight: .semibold))
+              .foregroundColor(.primary)
+              .lineLimit(1)
+              .truncationMode(.tail)
           }
-          Text(entry.configuration.selectedUsername ?? "")
-            .font(.system(size: 12, weight: .semibold))
-            .foregroundColor(.primary)
-            .lineLimit(1)
-            .truncationMode(.tail)
         }
         .padding(.horizontal, 4)
         .padding(.vertical, 2)
@@ -170,6 +220,31 @@ struct Contribtuions_WidgetEntryView: View {
       }
     }
   }
+
+  private func multipleUsersListView(users: [UserSettings]) -> some View {
+    VStack(alignment: .leading, spacing: 6) {
+      ForEach(users.prefix(4), id: \.username) { user in
+        UserWeekRow(user: user)
+      }
+    }
+    .padding(.horizontal, 10)
+    .padding(.vertical, 8)
+  }
+
+  private func getSelectedUsers() -> [UserSettings] {
+    let usernames: [String] = {
+      guard let selected = entry.configuration.selectedUsernames, !selected.isEmpty else {
+        return []
+      }
+      switch family {
+      case .systemSmall:
+        return [selected.first!]
+      default:
+        return selected
+      }
+    }()
+    return entry.users.filter { usernames.contains($0.username) }
+  }
 }
 
 struct Contribtuions_Widget: Widget {
@@ -179,8 +254,10 @@ struct Contribtuions_Widget: Widget {
     AppIntentConfiguration(kind: kind, intent: ConfigurationAppIntent.self, provider: Provider()) {
       entry in
       Contribtuions_WidgetEntryView(entry: entry)
+        .padding(8)
         .containerBackground(.fill.tertiary, for: .widget)
     }
+    .contentMarginsDisabled()
     .configurationDisplayName("GitHub Contributions")
     .description("Display your GitHub contribution graph")
     .supportedFamilies([.systemSmall, .systemMedium])
@@ -191,6 +268,144 @@ struct Contribtuions_Widget: Widget {
   Contribtuions_Widget()
 } timeline: {
   ContributionEntry(
-    date: .now, configuration: ConfigurationAppIntent(selectedUsername: "testuser"),
+    date: .now,
+    configuration: ConfigurationAppIntent(selectedUsernames: ["testuser"]),
     contributions: [], users: [])
+}
+
+#Preview(as: .systemMedium) {
+  Contribtuions_Widget()
+} timeline: {
+  ContributionEntry(
+    date: .now,
+    configuration: ConfigurationAppIntent(selectedUsernames: ["user1", "user2"]),
+    contributions: [], users: [])
+}
+
+// MARK: - User Week Row
+struct UserWeekRow: View {
+  let user: UserSettings
+  private let dataManager = DataManager.shared
+  @Environment(\.colorScheme) private var colorScheme
+
+  private let boxSize: CGFloat = 20
+  private let boxCornerRadius: CGFloat = 6
+  private let boxSpacing: CGFloat = 3
+  private let usernameWidth: CGFloat = 90
+
+  var body: some View {
+    HStack(alignment: .center, spacing: 4) {
+      // Avatar + username tightly grouped
+      HStack(spacing: 6) {
+        CachedAvatarBoxView(
+          username: user.username,
+          size: boxSize,
+          cornerRadius: boxCornerRadius,
+          showBorder: true
+        )
+        Text(user.username)
+          .font(.system(size: 14, weight: .semibold))
+          .foregroundColor(.primary)
+          .lineLimit(1)
+          .frame(width: usernameWidth, alignment: .leading)
+      }
+      Spacer(minLength: 8)
+      if let contributions = dataManager.getCachedContributions(for: user.username) {
+        let weekDays = last7Days(contributions: contributions)
+        HStack(spacing: boxSpacing) {
+          ForEach(weekDays, id: \.date) { day in
+            RoundedRectangle(cornerRadius: boxCornerRadius)
+              .fill(getColor(for: day.contributionCount))
+              .frame(width: boxSize, height: boxSize)
+              .overlay(
+                RoundedRectangle(cornerRadius: boxCornerRadius)
+                  .stroke(Color(.systemGray4), lineWidth: 1)
+              )
+              .shadow(color: Color.black.opacity(0.04), radius: 1, y: 1)
+          }
+        }
+      } else {
+        HStack(spacing: boxSpacing) {
+          ForEach((0..<7).reversed(), id: \.self) { _ in
+            RoundedRectangle(cornerRadius: boxCornerRadius)
+              .fill(Color(.systemGray5))
+              .frame(width: boxSize, height: boxSize)
+              .overlay(
+                RoundedRectangle(cornerRadius: boxCornerRadius)
+                  .stroke(Color(.systemGray4), lineWidth: 1)
+              )
+              .shadow(color: Color.black.opacity(0.04), radius: 1, y: 1)
+          }
+        }
+      }
+    }
+  }
+
+  // Helper: Get last 7 days, oldest to newest
+  private func last7Days(contributions: [ContributionDay]) -> [ContributionDay] {
+    let sorted = contributions.sorted { ($0.date) < ($1.date) }
+    return Array(sorted.suffix(7))
+  }
+
+  private func getColor(for count: Int) -> Color {
+    let level = GitHubService.shared.getContributionLevel(count: count)
+    return user.colorTheme.color(for: level, isDarkMode: colorScheme == .dark)
+  }
+}
+
+// MARK: - Cached Avatar Box View
+struct CachedAvatarBoxView: View {
+  let username: String
+  let size: CGFloat
+  let cornerRadius: CGFloat
+  var showBorder: Bool = false
+  private let dataManager = DataManager.shared
+
+  var body: some View {
+    if let imageData = dataManager.getCachedAvatar(for: username),
+      let uiImage = UIImage(data: imageData)
+    {
+      Image(uiImage: uiImage)
+        .resizable()
+        .aspectRatio(contentMode: .fill)
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .if(showBorder) { view in
+          view.overlay(
+            RoundedRectangle(cornerRadius: cornerRadius)
+              .stroke(Color(.systemGray4), lineWidth: 1)
+          )
+          .shadow(color: Color.black.opacity(0.06), radius: 2, y: 1)
+        }
+    } else {
+      // Fallback to initials or placeholder
+      RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        .fill(Color.gray.opacity(0.2))
+        .overlay(
+          Text(String(username.prefix(2)).uppercased())
+            .font(.system(size: size * 0.4, weight: .bold))
+            .foregroundColor(.gray)
+        )
+        .frame(width: size, height: size)
+        .if(showBorder) { view in
+          view.overlay(
+            RoundedRectangle(cornerRadius: cornerRadius)
+              .stroke(Color(.systemGray4), lineWidth: 1)
+          )
+          .shadow(color: Color.black.opacity(0.06), radius: 2, y: 1)
+        }
+    }
+  }
+}
+
+// MARK: - View Modifier for Conditional
+extension View {
+  @ViewBuilder
+  func `if`<Content: View>(_ condition: Bool, transform: (Self) -> Content) -> some View {
+    if condition {
+      transform(self)
+    } else {
+      self
+    }
+  }
 }

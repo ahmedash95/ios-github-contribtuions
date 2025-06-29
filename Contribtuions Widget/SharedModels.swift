@@ -98,10 +98,12 @@ struct ContributionColorTheme: Codable, Identifiable {
   }
 
   func color(for level: Int, isDarkMode: Bool = false) -> Color {
+    if level == 0 {
+      return Color(.systemGray5)
+    }
     guard level >= 0 && level < lightColors.count else {
       return Color(.systemGray6)
     }
-
     let hexColor = isDarkMode ? darkColors[level] : lightColors[level]
     return Color(hex: hexColor)
   }
