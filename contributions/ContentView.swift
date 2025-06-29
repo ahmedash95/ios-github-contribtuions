@@ -18,14 +18,19 @@ struct ContentView: View {
   @State private var isRefreshing = false
 
   var body: some View {
-    NavigationView {
+    NavigationStack {
       ScrollView {
-        LazyVStack(spacing: 6) {
-          if needsTokenSetup {
-            tokenSetupPrompt
-          } else if userStore.users.isEmpty {
-            emptyState
-          } else {
+        if needsTokenSetup {
+          tokenSetupPrompt
+        } else if userStore.users.isEmpty {
+          emptyState
+        } else {
+          LazyVGrid(
+            columns: [
+              GridItem(.adaptive(minimum: 300, maximum: .infinity), spacing: 12)
+            ],
+            spacing: 12
+          ) {
             ForEach(userStore.users, id: \.username) { userSettings in
               UserContributionView(userSettings: userSettings, forceRefresh: isRefreshing)
                 .contextMenu {
@@ -35,8 +40,8 @@ struct ContentView: View {
                 }
             }
           }
+          .padding(12)
         }
-        .padding(12)
       }
       .refreshable {
         await refreshAllData()
