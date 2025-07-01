@@ -9,6 +9,18 @@ struct UserContributionView: View {
   @State private var isLoading = true
   @State private var errorMessage = ""
   @Environment(\.colorScheme) private var colorScheme
+  
+  private var currentStreak: Int {
+    var streak = 0
+    for day in contributions.reversed() {
+      if day.contributionCount > 0 {
+        streak += 1
+      } else {
+        break
+      }
+    }
+    return streak
+  }
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
@@ -87,6 +99,16 @@ struct UserContributionView: View {
             Text("\(totalContributions) contributions")
               .font(.caption2)
               .foregroundColor(.secondary)
+
+            if currentStreak > 0 {
+              Text("•")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+
+              Text("\(currentStreak) day streak")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+            }
           }
         }
       }

@@ -28,6 +28,8 @@ The GitHub Contributions iOS App is a sleek, intuitive application designed to d
    - Add User Button.
    - List of Users with Avatars and Usernames.
    - Contribution Chart with customization options.
+   - Streak count indicating consecutive days with contributions.
+   - TabBar navigation between Contributions and Settings.
 
 2. **Add User Form:**
    - Input field to enter GitHub username.

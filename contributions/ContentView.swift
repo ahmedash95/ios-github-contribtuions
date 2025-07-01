@@ -12,12 +12,11 @@ import WidgetKit
 struct ContentView: View {
   @EnvironmentObject var userStore: UserStore
   @State private var showingAddUser = false
-  @State private var showingSettings = false
   @State private var showingTokenSetup = false
   @State private var needsTokenSetup = !GitHubService.shared.isTokenConfigured()
   @State private var isRefreshing = false
 
-  var body: some View {
+  private var contributionsView: some View {
     NavigationStack {
       ScrollView {
         if needsTokenSetup {
@@ -50,14 +49,6 @@ struct ContentView: View {
       .navigationTitle("")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
-        ToolbarItem(placement: .navigationBarLeading) {
-          Button {
-            showingSettings = true
-          } label: {
-            Image(systemName: "gearshape")
-          }
-        }
-
         ToolbarItem(placement: .primaryAction) {
           Button {
             if needsTokenSetup {
@@ -73,9 +64,6 @@ struct ContentView: View {
       .sheet(isPresented: $showingAddUser) {
         AddUserView(userStore: userStore)
       }
-      .sheet(isPresented: $showingSettings) {
-        SettingsView(userStore: userStore)
-      }
       .sheet(isPresented: $showingTokenSetup) {
         GitHubTokenSetupView()
           .onDisappear {
@@ -86,6 +74,19 @@ struct ContentView: View {
         // Test App Groups functionality
         DataManager.shared.testAppGroupsAccess()
       }
+    }
+  }
+
+  var body: some View {
+    TabView {
+      contributionsView
+        .tabItem {
+          Label("Contributions", systemImage: "chart.dots.scatter")
+        }
+      SettingsView(userStore: userStore)
+        .tabItem {
+          Label("Settings", systemImage: "gearshape")
+        }
     }
   }
 
