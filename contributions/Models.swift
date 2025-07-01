@@ -235,6 +235,12 @@ class UserStore: ObservableObject {
   }
 
   func addUser(_ username: String, colorThemeId: String = "github") {
+    // Check if user already exists
+    if users.contains(where: { $0.username.lowercased() == username.lowercased() }) {
+      print("❌ Main App - User \(username) already exists")
+      return
+    }
+
     print("🔄 Main App - Adding user: \(username)")
     let newUser = UserSettings(username: username, colorThemeId: colorThemeId)
     users.append(newUser)

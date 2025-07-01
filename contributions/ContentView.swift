@@ -11,10 +11,10 @@ import WidgetKit
 
 struct ContentView: View {
   @EnvironmentObject var userStore: UserStore
-  @State private var showingAddUser = false
   @State private var showingTokenSetup = false
   @State private var needsTokenSetup = !GitHubService.shared.isTokenConfigured()
   @State private var isRefreshing = false
+  @State private var selectedTab = 0
 
   private var contributionsView: some View {
     NavigationStack {
@@ -48,22 +48,6 @@ struct ContentView: View {
       .background(Color(.systemGroupedBackground).ignoresSafeArea())
       .navigationTitle("")
       .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .primaryAction) {
-          Button {
-            if needsTokenSetup {
-              showingTokenSetup = true
-            } else {
-              showingAddUser = true
-            }
-          } label: {
-            Image(systemName: needsTokenSetup ? "key" : "plus")
-          }
-        }
-      }
-      .sheet(isPresented: $showingAddUser) {
-        AddUserView(userStore: userStore)
-      }
       .sheet(isPresented: $showingTokenSetup) {
         GitHubTokenSetupView()
           .onDisappear {
@@ -78,15 +62,17 @@ struct ContentView: View {
   }
 
   var body: some View {
-    TabView {
+    TabView(selection: $selectedTab) {
       contributionsView
         .tabItem {
           Label("Contributions", systemImage: "chart.dots.scatter")
         }
+        .tag(0)
       SettingsView(userStore: userStore)
         .tabItem {
           Label("Settings", systemImage: "gearshape")
         }
+        .tag(1)
     }
   }
 
@@ -170,9 +156,9 @@ struct ContentView: View {
       }
 
       Button {
-        showingAddUser = true
+        selectedTab = 1
       } label: {
-        Label("Add User", systemImage: "plus")
+        Label("Go to Settings", systemImage: "gearshape")
           .font(.headline)
           .foregroundColor(.white)
           .padding()

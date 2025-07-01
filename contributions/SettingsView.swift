@@ -11,6 +11,7 @@ struct SettingsView: View {
   @State private var showingTokenSetup = false
   @State private var showingTokenAlert = false
   @State private var showingFlushCacheAlert = false
+  @State private var showingAddUser = false
 
   var body: some View {
     NavigationView {
@@ -61,6 +62,18 @@ struct SettingsView: View {
         }
 
         Section("Users") {
+          HStack {
+            Image(systemName: "plus.circle.fill")
+              .foregroundColor(.blue)
+            Text("Add User")
+              .font(.headline)
+            Spacer()
+            Button("Add") {
+              showingAddUser = true
+            }
+            .buttonStyle(.bordered)
+          }
+
           if userStore.users.isEmpty {
             Text("No users added")
               .foregroundColor(.secondary)
@@ -113,17 +126,7 @@ struct SettingsView: View {
       .navigationTitle("Settings")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
-        ToolbarItem(placement: .confirmationAction) {
-          Button("Done") {
-            dismiss()
-          }
-        }
-
-        if !userStore.users.isEmpty {
-          ToolbarItem(placement: .navigationBarLeading) {
-            EditButton()
-          }
-        }
+        // Toolbar is empty - removed Done and Edit buttons
       }
       .sheet(isPresented: $showingThemePicker) {
         if let user = selectedUser {
@@ -132,6 +135,9 @@ struct SettingsView: View {
       }
       .sheet(isPresented: $showingTokenSetup) {
         GitHubTokenSetupView()
+      }
+      .sheet(isPresented: $showingAddUser) {
+        AddUserView(userStore: userStore)
       }
       .alert("Remove GitHub Token", isPresented: $showingTokenAlert) {
         Button("Cancel", role: .cancel) {}

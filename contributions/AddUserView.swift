@@ -1,4 +1,5 @@
 import Combine
+import Foundation
 import SwiftUI
 
 struct AddUserView: View {
@@ -18,61 +19,82 @@ struct AddUserView: View {
             TextField("Enter username", text: $username)
               .textInputAutocapitalization(.never)
               .autocorrectionDisabled()
+              .onChange(of: username) { _ in
+                // Clear error message when user starts typing
+                if !errorMessage.isEmpty {
+                  errorMessage = ""
+                }
+              }
           }
 
           if !errorMessage.isEmpty {
-            Text(errorMessage)
-              .foregroundColor(.red)
-              .font(.caption)
-              .padding(.top, 8)
+            HStack {
+              Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundColor(.red)
+              Text(errorMessage)
+                .foregroundColor(.red)
+                .font(.caption)
+            }
+            .padding(.top, 8)
+          }
+
+          Section("Theme") {
+            ThemeGridPicker(selectedThemeId: $selectedThemeId)
           }
         }
-        .frame(maxHeight: 180)
-
-        // Theme picker takes the rest of the space
-        ThemeGridPicker(selectedThemeId: $selectedThemeId)
-          .frame(maxHeight: .infinity)
-      }
-      .ignoresSafeArea(.keyboard)
-      .navigationTitle("Add User")
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-          Button("Cancel") {
-            dismiss()
+        .ignoresSafeArea(.keyboard)
+        .navigationTitle("Add User")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+          ToolbarItem(placement: .cancellationAction) {
+            Button("Cancel") {
+              dismiss()
+            }
           }
-        }
 
-        ToolbarItem(placement: .confirmationAction) {
-          Button("Add") {
-            addUser()
+          ToolbarItem(placement: .confirmationAction) {
+            Button("Add") {
+              addUser()
+            }
+            .disabled(username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoading)
           }
-          .disabled(username.isEmpty || isLoading)
         }
       }
     }
   }
 
   private func addUser() {
+    let trimmedUsername = username.trimmingCharacters(in: .whitespacesAndNewlines)
+
+    // Final validation before adding
+    if let validationError = ErrorHandler.getUsernameValidationError(
+      for: trimmedUsername, existingUsers: userStore.users)
+    {
+      errorMessage = validationError
+      return
+    }
+
     isLoading = true
     errorMessage = ""
 
     Task {
       do {
-        _ = try await GitHubService.shared.fetchUser(username: username)
-
+        // Final GitHub existence check
+        let _ = try await GitHubService.shared.fetchUser(username: trimmedUsername)
         await MainActor.run {
-          userStore.addUser(username, colorThemeId: selectedThemeId)
+          userStore.addUser(trimmedUsername, colorThemeId: selectedThemeId)
           dismiss()
         }
       } catch {
+        print("AddUser error: \(error)")
         await MainActor.run {
-          errorMessage = "User not found or network error"
+          errorMessage = ErrorHandler.getErrorMessage(for: error)
           isLoading = false
         }
       }
     }
   }
+
 }
 
 // Reusable theme grid picker for both AddUserView and SettingsView
@@ -81,13 +103,13 @@ struct ThemeGridPicker: View {
   @Environment(\.colorScheme) private var colorScheme
 
   let columns = [
-    GridItem(.flexible(), spacing: 20),
-    GridItem(.flexible(), spacing: 20),
+    GridItem(.fixed(150), spacing: 20),
+    GridItem(.fixed(150), spacing: 20),
   ]
 
   var body: some View {
     ScrollView(.vertical, showsIndicators: false) {
-      LazyVGrid(columns: columns, spacing: 20) {
+      LazyVGrid(columns: columns, spacing: 24) {
         ForEach(ContributionColorTheme.themes) { theme in
           ThemePreviewListItem(
             theme: theme,
@@ -95,13 +117,11 @@ struct ThemeGridPicker: View {
           ) {
             selectedThemeId = theme.id
           }
-          .padding(.horizontal, 4)
         }
       }
       .padding(.horizontal, 12)
       .padding(.top, 8)
       .padding(.bottom, 8)
     }
-    .frame(minHeight: 220, maxHeight: 340)  // Adjust as needed for form
   }
 }

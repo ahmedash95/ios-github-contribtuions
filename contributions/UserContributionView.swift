@@ -9,7 +9,7 @@ struct UserContributionView: View {
   @State private var isLoading = true
   @State private var errorMessage = ""
   @Environment(\.colorScheme) private var colorScheme
-  
+
   private var currentStreak: Int {
     var streak = 0
     for day in contributions.reversed() {
@@ -164,7 +164,7 @@ struct UserContributionView: View {
       }
     } catch {
       await MainActor.run {
-        self.errorMessage = "Failed to load data"
+        self.errorMessage = ErrorHandler.getErrorMessage(for: error)
         self.isLoading = false
       }
     }

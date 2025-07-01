@@ -1,6 +1,27 @@
 import Combine
 import Foundation
 
+// MARK: - GitHub API Errors
+enum GitHubError: LocalizedError {
+  case userNotFound(String)
+  case rateLimited
+  case unauthorized
+  case httpError(Int)
+
+  var errorDescription: String? {
+    switch self {
+    case .userNotFound(let username):
+      return "GitHub user '\(username)' not found"
+    case .rateLimited:
+      return "Rate limit exceeded. Please try again later."
+    case .unauthorized:
+      return "Unauthorized access"
+    case .httpError(let code):
+      return "HTTP error: \(code)"
+    }
+  }
+}
+
 class GitHubService: ObservableObject {
   static let shared = GitHubService()
 
@@ -52,12 +73,34 @@ class GitHubService: ObservableObject {
     }
 
     do {
-      let (data, _) = try await URLSession.shared.data(from: url)
-      let user = try JSONDecoder().decode(GitHubUser.self, from: data)
+      let (data, response) = try await URLSession.shared.data(from: url)
 
-      // Cache the fresh user data
-      dataManager.cacheUser(user, for: username)
-      return user
+      // Check HTTP status code
+      if let httpResponse = response as? HTTPURLResponse {
+        switch httpResponse.statusCode {
+        case 200:
+          // Success - decode the user data
+          let user = try JSONDecoder().decode(GitHubUser.self, from: data)
+          // Cache the fresh user data
+          dataManager.cacheUser(user, for: username)
+          return user
+        case 404:
+          // User not found
+          throw GitHubError.userNotFound(username)
+        case 403:
+          // Rate limited or forbidden
+          throw GitHubError.rateLimited
+        case 401:
+          // Unauthorized (though this shouldn't happen for public user data)
+          throw GitHubError.unauthorized
+        default:
+          // Other HTTP errors
+          throw GitHubError.httpError(httpResponse.statusCode)
+        }
+      } else {
+        // Not an HTTP response
+        throw URLError(.badServerResponse)
+      }
     } catch {
       // If fetch fails and we have cached data, return cached data
       if let cachedUser = dataManager.getCachedUser(for: username) {
@@ -78,12 +121,34 @@ class GitHubService: ObservableObject {
       throw URLError(.badURL)
     }
 
-    let (data, _) = try await URLSession.shared.data(from: url)
-    let user = try JSONDecoder().decode(GitHubUser.self, from: data)
+    let (data, response) = try await URLSession.shared.data(from: url)
 
-    // Cache the fresh user data
-    dataManager.cacheUser(user, for: username)
-    return user
+    // Check HTTP status code
+    if let httpResponse = response as? HTTPURLResponse {
+      switch httpResponse.statusCode {
+      case 200:
+        // Success - decode the user data
+        let user = try JSONDecoder().decode(GitHubUser.self, from: data)
+        // Cache the fresh user data
+        dataManager.cacheUser(user, for: username)
+        return user
+      case 404:
+        // User not found
+        throw GitHubError.userNotFound(username)
+      case 403:
+        // Rate limited or forbidden
+        throw GitHubError.rateLimited
+      case 401:
+        // Unauthorized (though this shouldn't happen for public user data)
+        throw GitHubError.unauthorized
+      default:
+        // Other HTTP errors
+        throw GitHubError.httpError(httpResponse.statusCode)
+      }
+    } else {
+      // Not an HTTP response
+      throw URLError(.badServerResponse)
+    }
   }
 
   func fetchContributions(username: String, days: Int = 365, useCache: Bool = true) async throws
