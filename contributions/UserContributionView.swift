@@ -16,7 +16,7 @@ struct UserContributionView: View {
       if day.contributionCount > 0 {
         streak += 1
       } else {
-        break
+         break
       }
     }
     return streak
@@ -92,28 +92,43 @@ struct UserContributionView: View {
             .foregroundColor(.secondary)
 
           if !contributions.isEmpty {
-            Text("•")
+            Text("• \(totalContributions) contributions")
               .font(.caption2)
               .foregroundColor(.secondary)
-
-            Text("\(totalContributions) contributions")
-              .font(.caption2)
-              .foregroundColor(.secondary)
-
-            if currentStreak > 0 {
-              Text("•")
-                .font(.caption2)
-                .foregroundColor(.secondary)
-
-              Text("\(currentStreak) day streak")
-                .font(.caption2)
-                .foregroundColor(.secondary)
-            }
           }
         }
       }
 
       Spacer()
+
+      // Streak indicator badge
+
+      if currentStreak > 0 {
+        HStack(spacing: 4) {
+          Image(systemName: "flame.fill")
+            .font(.caption2)
+            .foregroundColor(
+              userSettings.colorTheme.color(for: 4, isDarkMode: colorScheme == .dark))
+          Text("\(currentStreak)")
+            .font(.caption2)
+            .fontWeight(.semibold)
+            .foregroundColor(
+              userSettings.colorTheme.color(for: 4, isDarkMode: colorScheme == .dark))
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(
+          RoundedRectangle(cornerRadius: 12)
+            .fill(
+              userSettings.colorTheme.color(for: 4, isDarkMode: colorScheme == .dark).opacity(0.1))
+        )
+        .overlay(
+          RoundedRectangle(cornerRadius: 12)
+            .stroke(
+              userSettings.colorTheme.color(for: 4, isDarkMode: colorScheme == .dark).opacity(0.3),
+              lineWidth: 1)
+        )
+      }
     }
   }
 
