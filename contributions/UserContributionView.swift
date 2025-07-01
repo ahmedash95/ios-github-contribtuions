@@ -16,7 +16,7 @@ struct UserContributionView: View {
       if day.contributionCount > 0 {
         streak += 1
       } else {
-         break
+        break
       }
     }
     return streak
@@ -171,6 +171,12 @@ struct UserContributionView: View {
       let (fetchedUser, fetchedContributions) = try await (
         userFetch.value, contributionsFetch.value
       )
+
+      // Download and cache avatar image
+      if let avatarUrl = URL(string: fetchedUser.avatarUrl) {
+        let (imageData, _) = try await URLSession.shared.data(from: avatarUrl)
+        DataManager.shared.cacheAvatar(imageData, for: userSettings.username)
+      }
 
       await MainActor.run {
         self.user = fetchedUser
