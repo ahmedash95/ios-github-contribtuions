@@ -19,7 +19,7 @@ struct AddUserView: View {
             TextField("Enter username", text: $username)
               .textInputAutocapitalization(.never)
               .autocorrectionDisabled()
-              .onChange(of: username) { _ in
+              .onChange(of: username) { _, _ in
                 // Clear error message when user starts typing
                 if !errorMessage.isEmpty {
                   errorMessage = ""

@@ -9,7 +9,6 @@ struct ContributionChartView: View {
 
   @State private var selectedDay: ContributionDay?
   @State private var showingDetail = false
-  @State private var scrollPosition: Int? = nil
   @Environment(\.colorScheme) private var colorScheme
 
   init(
@@ -90,42 +89,52 @@ struct ContributionChartView: View {
   }
 
   private var regularChart: some View {
-    VStack(alignment: .leading, spacing: 8) {
-      ScrollView(.horizontal, showsIndicators: false) {
-        HStack(spacing: 2) {
-          ForEach(Array(githubStyleWeeks(last364Days).enumerated()), id: \.offset) {
-            weekIndex, week in
-            VStack(spacing: 2) {
-              ForEach(0..<7, id: \.self) { dayIndex in
-                if dayIndex < week.count {
-                  let day = week[dayIndex]
-                  RoundedRectangle(cornerRadius: 2)
-                    .fill(getColor(for: day.contributionCount))
-                    .frame(width: 11, height: 11)
-                    .onTapGesture {
-                      selectedDay = day
-                      showingDetail = true
-                    }
-                } else {
-                  RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.clear)
-                    .frame(width: 11, height: 11)
+    ScrollViewReader { proxy in
+      VStack(alignment: .leading, spacing: 8) {
+        ScrollView(.horizontal, showsIndicators: false) {
+          HStack(spacing: 2) {
+            ForEach(Array(githubStyleWeeks(last364Days).enumerated()), id: \.offset) {
+              weekIndex, week in
+              VStack(spacing: 2) {
+                ForEach(0..<7, id: \.self) { dayIndex in
+                  if dayIndex < week.count {
+                    let day = week[dayIndex]
+                    RoundedRectangle(cornerRadius: 2)
+                      .fill(getColor(for: day.contributionCount))
+                      .frame(width: 11, height: 11)
+                      .onTapGesture {
+                        selectedDay = day
+                        showingDetail = true
+                      }
+                  } else {
+                    RoundedRectangle(cornerRadius: 2)
+                      .fill(Color.clear)
+                      .frame(width: 11, height: 11)
+                  }
                 }
               }
+              .id(weekIndex)
             }
-            .id(weekIndex)
+          }
+        }
+        .onReceive(Just(contributions)) { _ in
+          withAnimation {
+            let totalWeeks = githubStyleWeeks(last364Days).count
+            if totalWeeks > 0 {
+              proxy.scrollTo(totalWeeks - 1, anchor: .trailing)
+            }
+          }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+      }
+      .onAppear {
+        withAnimation {
+          let totalWeeks = githubStyleWeeks(last364Days).count
+          if totalWeeks > 0 {
+            proxy.scrollTo(totalWeeks - 1, anchor: .trailing)
           }
         }
       }
-      .scrollPosition(id: $scrollPosition)
-      .onAppear {
-        // Scroll to the end to show latest days
-        let totalWeeks = githubStyleWeeks(last364Days).count
-        if totalWeeks > 0 {
-          scrollPosition = totalWeeks - 1
-        }
-      }
-      .frame(maxWidth: .infinity, alignment: .leading)
     }
     .alert("Contribution Details", isPresented: $showingDetail) {
       Button("OK") {}
@@ -216,4 +225,5 @@ struct ContributionChartView: View {
     let level = GitHubService.shared.getContributionLevel(count: count)
     return userSettings.colorTheme.color(for: level, isDarkMode: colorScheme == .dark)
   }
+
 }

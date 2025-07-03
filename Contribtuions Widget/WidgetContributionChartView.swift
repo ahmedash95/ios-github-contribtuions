@@ -21,26 +21,32 @@ struct WidgetContributionChartView: View {
     // Only show the most recent rowsCount * columnsCount days
     let daysToShow = rowsCount * columnsCount
     let days = Array(contributions.suffix(daysToShow))
-    // Arrange into columns (weeks)
+
+    // Arrange into columns (weeks) - each column represents a week
+    // The last day should be in the bottom right corner (last row of last column)
     let columns = stride(from: 0, to: days.count, by: rowsCount).map {
       Array(days[$0..<min($0 + rowsCount, days.count)])
     }
+
     // Calculate tile size
     let tileSize =
       (size.width - CGFloat(columnsCount - 1) * tileSpacing - 2) / CGFloat(columnsCount)
 
     HStack(spacing: tileSpacing) {
-      ForEach(0..<columns.count, id: \.self) { col in
+      ForEach(0..<columnsCount, id: \.self) { col in
         VStack(spacing: tileSpacing) {
           ForEach(0..<rowsCount, id: \.self) { row in
-            if row < columns[col].count {
+            if col < columns.count && row < columns[col].count {
               let day = columns[col][row]
               RoundedRectangle(cornerRadius: 2)
                 .fill(getColor(for: day.contributionCount))
                 .frame(width: tileSize, height: tileSize)
                 .shadow(color: Color.black.opacity(0.08), radius: 1, y: 1)
             } else {
-              Color.clear.frame(width: tileSize, height: tileSize)
+              RoundedRectangle(cornerRadius: 2)
+                .fill(Color(.systemGray6))
+                .frame(width: tileSize, height: tileSize)
+                .shadow(color: Color.black.opacity(0.08), radius: 1, y: 1)
             }
           }
         }

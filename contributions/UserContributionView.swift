@@ -74,7 +74,7 @@ struct UserContributionView: View {
     .task {
       await loadData()
     }
-    .onChange(of: forceRefresh) { _ in
+    .onChange(of: forceRefresh) { _, _ in
       Task {
         await loadData()
       }
