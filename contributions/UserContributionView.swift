@@ -92,7 +92,7 @@ struct UserContributionView: View {
             .foregroundColor(.secondary)
 
           if !contributions.isEmpty {
-            Text("• \(totalContributions) contributions")
+            Text("• \(formatContributions(totalContributions)) contributions")
               .font(.caption2)
               .foregroundColor(.secondary)
           }
@@ -134,6 +134,18 @@ struct UserContributionView: View {
 
   private var totalContributions: Int {
     contributions.reduce(0) { $0 + $1.contributionCount }
+  }
+
+  private func formatContributions(_ count: Int) -> String {
+    if count >= 1000 {
+      let thousands = Double(count) / 1000.0
+      if thousands.truncatingRemainder(dividingBy: 1) == 0 {
+        return "\(Int(thousands))k"
+      } else {
+        return String(format: "%.1fk", thousands)
+      }
+    }
+    return "\(count)"
   }
 
   private var contributionChart: some View {
