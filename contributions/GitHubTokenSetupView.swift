@@ -9,21 +9,21 @@ struct GitHubTokenSetupView: View {
 
   var body: some View {
     NavigationView {
-      ScrollView {
-        VStack(spacing: 24) {
-          headerSection
-          instructionsSection
-          tokenInputSection
+      VStack(spacing: 20) {
+        // Token input as the primary focus
+        tokenInputSection
 
-          if !errorMessage.isEmpty {
-            errorSection
-          }
-
-          Spacer()
+        if !errorMessage.isEmpty {
+          errorSection
         }
-        .padding()
+
+        // Compact instructions
+        instructionsSection
+
+        Spacer()
       }
-      .navigationTitle("GitHub Setup")
+      .padding()
+      .navigationTitle("GitHub Token")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .cancellationAction) {
@@ -49,72 +49,6 @@ struct GitHubTokenSetupView: View {
     }
   }
 
-  private var headerSection: some View {
-    VStack(spacing: 12) {
-      Image(systemName: "key.fill")
-        .font(.system(size: 48))
-        .foregroundColor(.blue)
-
-      Text("GitHub Access Token Required")
-        .font(.title2)
-        .fontWeight(.semibold)
-        .multilineTextAlignment(.center)
-
-      Text(
-        "To display your contribution data, we need a GitHub Personal Access Token with read permissions."
-      )
-      .font(.body)
-      .foregroundColor(.secondary)
-      .multilineTextAlignment(.center)
-    }
-  }
-
-  private var instructionsSection: some View {
-    VStack(alignment: .leading, spacing: 16) {
-      Text("Setup Instructions:")
-        .font(.headline)
-
-      VStack(alignment: .leading, spacing: 12) {
-        instructionStep(
-          number: "1",
-          title: "Generate Token",
-          description: "Click the button below to open GitHub's token page"
-        )
-
-        Button {
-          openGitHubTokenPage()
-        } label: {
-          HStack {
-            Image(systemName: "safari")
-            Text("Open GitHub Tokens Page")
-          }
-          .font(.subheadline)
-          .foregroundColor(.white)
-          .padding(.horizontal, 16)
-          .padding(.vertical, 10)
-          .background(Color.blue)
-          .cornerRadius(8)
-        }
-
-        instructionStep(
-          number: "2",
-          title: "Configure Token",
-          description:
-            "• Click 'Generate new token (classic)'\n• Add a note like 'Contributions App'\n• Select 'read:user' scope\n• Click 'Generate token'"
-        )
-
-        instructionStep(
-          number: "3",
-          title: "Copy & Paste",
-          description: "Copy the generated token and paste it below"
-        )
-      }
-    }
-    .padding()
-    .background(Color(.systemGray6))
-    .cornerRadius(12)
-  }
-
   private var tokenInputSection: some View {
     VStack(alignment: .leading, spacing: 8) {
       Text("GitHub Personal Access Token")
@@ -123,11 +57,43 @@ struct GitHubTokenSetupView: View {
       SecureField("ghp_xxxxxxxxxxxxxxxxxxxx", text: $token)
         .textFieldStyle(.roundedBorder)
         .font(.system(.body, design: .monospaced))
+        .autocapitalization(.none)
+        .disableAutocorrection(true)
 
-      Text("Your token will be securely stored in the iOS Keychain")
+      Text("Securely stored in iOS Keychain")
         .font(.caption)
         .foregroundColor(.secondary)
     }
+  }
+
+  private var instructionsSection: some View {
+    VStack(alignment: .leading) {
+      Text("Need a token?")
+        .font(.subheadline)
+        .fontWeight(.medium)
+
+      Button {
+        openGitHubTokenPage()
+      } label: {
+        HStack {
+          Image(systemName: "safari")
+          Text("Open GitHub Tokens Page")
+        }
+        .font(.subheadline)
+        .foregroundColor(.blue)
+      }
+
+      Text(
+        "1. Generate new token (classic)\n2. Add note: 'Contributions App'\n3. Select 'read:user' scope\n4. Copy & paste above"
+      )
+      .font(.caption)
+      .foregroundColor(.secondary)
+      .lineLimit(nil)
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .padding(.vertical, 8)
+    .background(Color(.systemGray6))
+    .cornerRadius(8)
   }
 
   private var errorSection: some View {
@@ -141,30 +107,6 @@ struct GitHubTokenSetupView: View {
     .padding()
     .background(Color.orange.opacity(0.1))
     .cornerRadius(8)
-  }
-
-  private func instructionStep(number: String, title: String, description: String) -> some View {
-    HStack(alignment: .top, spacing: 12) {
-      Text(number)
-        .font(.subheadline)
-        .fontWeight(.semibold)
-        .foregroundColor(.white)
-        .frame(width: 24, height: 24)
-        .background(Color.blue)
-        .clipShape(Circle())
-
-      VStack(alignment: .leading, spacing: 4) {
-        Text(title)
-          .font(.subheadline)
-          .fontWeight(.medium)
-
-        Text(description)
-          .font(.caption)
-          .foregroundColor(.secondary)
-      }
-
-      Spacer()
-    }
   }
 
   private func openGitHubTokenPage() {

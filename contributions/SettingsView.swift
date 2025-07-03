@@ -16,51 +16,6 @@ struct SettingsView: View {
   var body: some View {
     NavigationView {
       List {
-        Section("GitHub Token") {
-          HStack {
-            Image(systemName: "key.fill")
-              .foregroundColor(.blue)
-            VStack(alignment: .leading) {
-              Text("Access Token")
-                .font(.headline)
-              Text(GitHubService.shared.isTokenConfigured() ? "Configured" : "Not Set")
-                .font(.caption)
-                .foregroundColor(GitHubService.shared.isTokenConfigured() ? .green : .orange)
-            }
-            Spacer()
-            Button(GitHubService.shared.isTokenConfigured() ? "Update" : "Setup") {
-              showingTokenSetup = true
-            }
-            .buttonStyle(.bordered)
-          }
-
-          if GitHubService.shared.isTokenConfigured() {
-            Button("Remove Token", role: .destructive) {
-              showingTokenAlert = true
-            }
-          }
-        }
-
-        Section("Cache Management") {
-          HStack {
-            Image(systemName: "trash.fill")
-              .foregroundColor(.orange)
-            VStack(alignment: .leading) {
-              Text("Flush Cache")
-                .font(.headline)
-              Text("Remove all cached data and fetch fresh data")
-                .font(.caption)
-                .foregroundColor(.secondary)
-            }
-            Spacer()
-            Button("Clear All") {
-              showingFlushCacheAlert = true
-            }
-            .buttonStyle(.bordered)
-            .foregroundColor(.orange)
-          }
-        }
-
         Section("Users") {
           HStack {
             Image(systemName: "plus.circle.fill")
@@ -92,9 +47,6 @@ struct SettingsView: View {
                 VStack(alignment: .leading) {
                   Text("@\(user.username)")
                     .font(.headline)
-                  Text("Chart Theme")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
                 }
 
                 Spacer()
@@ -115,11 +67,78 @@ struct SettingsView: View {
           }
         }
 
+        Section("GitHub Token") {
+          HStack {
+            Image(systemName: "key.fill")
+              .foregroundColor(.blue)
+            VStack(alignment: .leading) {
+              Text("Access Token")
+                .font(.headline)
+              Text(GitHubService.shared.isTokenConfigured() ? "Configured" : "Not Set")
+                .font(.caption)
+                .foregroundColor(GitHubService.shared.isTokenConfigured() ? .green : .orange)
+            }
+            Spacer()
+            Button(GitHubService.shared.isTokenConfigured() ? "Update" : "Setup") {
+              showingTokenSetup = true
+            }
+            .buttonStyle(.bordered)
+          }
+
+          if GitHubService.shared.isTokenConfigured() {
+            Button("Remove Token", role: .destructive) {
+              showingTokenAlert = true
+            }
+          }
+        }
+
+
+        Section("Cache Management") {
+          HStack {
+            Image(systemName: "trash.fill")
+              .foregroundColor(.orange)
+            VStack(alignment: .leading) {
+              Text("Flush Cache")
+                .font(.headline)
+              Text("Remove all cached data and fetch fresh data")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            }
+            Spacer()
+            Button("Clear All") {
+              showingFlushCacheAlert = true
+            }
+            .buttonStyle(.bordered)
+            .foregroundColor(.orange)
+          }
+        }
+
         Section("About") {
           HStack {
             Image(systemName: "info.circle")
               .foregroundColor(.blue)
-            Text("Version 1.0")
+            Text(
+              "Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"))"
+            )
+          }
+
+          Link(destination: URL(string: "https://github.com/ahmedash95/ios-github-contribtuions")!)
+          {
+            HStack {
+              Image(systemName: "link")
+                .foregroundColor(.blue)
+              Text("Github repository")
+                .foregroundColor(.blue)
+            }
+          }
+
+          Link(destination: URL(string: "https://x.com/ahmedash95")!) {
+            HStack {
+              Image(systemName: "person.circle")
+                .foregroundColor(.blue)
+              Text("@ahmedash95")
+                .foregroundColor(.blue)
+            }
           }
         }
       }
