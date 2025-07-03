@@ -100,6 +100,11 @@ struct ContributionColorTheme: Codable, Identifiable {
       return Color(.systemGray6)
     }
 
+    // For level 0 (empty boxes), use a consistent gray color
+    if level == 0 {
+      return isDarkMode ? Color(.systemGray5) : Color(.systemGray5)
+    }
+
     let hexColor = isDarkMode ? darkColors[level] : lightColors[level]
     return Color(hex: hexColor)
   }

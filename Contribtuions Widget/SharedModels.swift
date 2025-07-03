@@ -92,6 +92,54 @@ struct ContributionColorTheme: Codable, Identifiable {
       lightColors: ["#ebedf0", "#ffb3b3", "#ff6666", "#ff3333", "#cc0000"],
       darkColors: ["#161b22", "#7c2d12", "#c2410c", "#dc2626", "#ef4444"]
     ),
+    ContributionColorTheme(
+      id: "teal",
+      name: "Teal",
+      lightColors: ["#ebedf0", "#99e6e6", "#66cccc", "#33b3b3", "#009999"],
+      darkColors: ["#161b22", "#134e4a", "#0f766e", "#14b8a6", "#2dd4bf"]
+    ),
+    ContributionColorTheme(
+      id: "pink",
+      name: "Rose Pink",
+      lightColors: ["#ebedf0", "#ffb3d9", "#ff66b3", "#ff3380", "#cc004d"],
+      darkColors: ["#161b22", "#831843", "#be185d", "#ec4899", "#f472b6"]
+    ),
+    ContributionColorTheme(
+      id: "yellow",
+      name: "Golden Yellow",
+      lightColors: ["#ebedf0", "#fff2cc", "#ffe680", "#ffd633", "#ccaa00"],
+      darkColors: ["#161b22", "#713f12", "#a16207", "#ca8a04", "#eab308"]
+    ),
+    ContributionColorTheme(
+      id: "indigo",
+      name: "Deep Indigo",
+      lightColors: ["#ebedf0", "#c7d2fe", "#a5b4fc", "#818cf8", "#6366f1"],
+      darkColors: ["#161b22", "#312e81", "#3730a3", "#4338ca", "#6366f1"]
+    ),
+    ContributionColorTheme(
+      id: "emerald",
+      name: "Emerald Green",
+      lightColors: ["#ebedf0", "#a7f3d0", "#6ee7b7", "#34d399", "#10b981"],
+      darkColors: ["#161b22", "#064e3b", "#065f46", "#047857", "#059669"]
+    ),
+    ContributionColorTheme(
+      id: "amber",
+      name: "Warm Amber",
+      lightColors: ["#ebedf0", "#fde68a", "#fbbf24", "#f59e0b", "#d97706"],
+      darkColors: ["#161b22", "#78350f", "#92400e", "#b45309", "#d97706"]
+    ),
+    ContributionColorTheme(
+      id: "rose",
+      name: "Soft Rose",
+      lightColors: ["#ebedf0", "#fecdd3", "#fda4af", "#fb7185", "#f43f5e"],
+      darkColors: ["#161b22", "#881337", "#be123c", "#e11d48", "#f43f5e"]
+    ),
+    ContributionColorTheme(
+      id: "slate",
+      name: "Cool Slate",
+      lightColors: ["#ebedf0", "#cbd5e1", "#94a3b8", "#64748b", "#475569"],
+      darkColors: ["#161b22", "#334155", "#475569", "#64748b", "#94a3b8"]
+    ),
   ]
 
   static func theme(for id: String) -> ContributionColorTheme {
@@ -99,12 +147,15 @@ struct ContributionColorTheme: Codable, Identifiable {
   }
 
   func color(for level: Int, isDarkMode: Bool = false) -> Color {
-    if level == 0 {
-      return Color(.systemGray5)
-    }
     guard level >= 0 && level < lightColors.count else {
       return Color(.systemGray6)
     }
+
+    // For level 0 (empty boxes), use a consistent gray color
+    if level == 0 {
+      return isDarkMode ? Color(.systemGray5) : Color(.systemGray5)
+    }
+
     let hexColor = isDarkMode ? darkColors[level] : lightColors[level]
     return Color(hex: hexColor)
   }
