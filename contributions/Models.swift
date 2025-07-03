@@ -247,33 +247,24 @@ class UserStore: ObservableObject {
     }
 
     print("🔄 Main App - Adding user: \(username)")
+
+    // Verify that data is cached before adding
+    let cachedUser = dataManager.getCachedUser(for: username)
+    let cachedContributions = dataManager.getCachedContributions(for: username)
+    let cachedAvatar = dataManager.getCachedAvatar(for: username)
+
+    print("📦 Main App - Data verification for \(username):")
+    print("   - User data: \(cachedUser != nil ? "✅" : "❌")")
+    print("   - Contributions: \(cachedContributions != nil ? "✅" : "❌")")
+    print("   - Avatar: \(cachedAvatar != nil ? "✅" : "❌")")
+
     let newUser = UserSettings(username: username, colorThemeId: colorThemeId)
     users.append(newUser)
     saveUsers()
     print("✅ Main App - User added successfully")
-    // Fetch and cache user profile (with avatar) and reload widget
-    Task {
-      do {
-        let user = try await GitHubService.shared.fetchUser(username: username)
-        DataManager.shared.cacheUser(user, for: username)
-        print("✅ Main App - Cached user avatar URL: \(user.avatarUrl)")
 
-        // Download and cache avatar image
-        if let avatarUrl = URL(string: user.avatarUrl) {
-          do {
-            let (imageData, _) = try await URLSession.shared.data(from: avatarUrl)
-            DataManager.shared.cacheAvatar(imageData, for: username)
-            print("✅ Main App - Downloaded and cached avatar image for \(username)")
-          } catch {
-            print("❌ Main App - Failed to download avatar image for \(username): \(error)")
-          }
-        }
-
-        WidgetCenter.shared.reloadAllTimelines()
-      } catch {
-        print("❌ Main App - Failed to fetch/cache user profile for widget: \(error)")
-      }
-    }
+    // Reload widget since user data should already be cached from AddUserView
+    WidgetCenter.shared.reloadAllTimelines()
   }
 
   func removeUser(_ username: String) {

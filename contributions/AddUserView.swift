@@ -27,7 +27,16 @@ struct AddUserView: View {
               }
           }
 
-          if !errorMessage.isEmpty {
+          if isLoading {
+            HStack {
+              ProgressView()
+                .scaleEffect(0.8)
+              Text("Fetching user data and contributions...")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            }
+            .padding(.top, 8)
+          } else if !errorMessage.isEmpty {
             HStack {
               Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundColor(.red)
@@ -53,7 +62,7 @@ struct AddUserView: View {
           }
 
           ToolbarItem(placement: .confirmationAction) {
-            Button("Add") {
+            Button(isLoading ? "Loading..." : "Add") {
               addUser()
             }
             .disabled(username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isLoading)
@@ -79,10 +88,37 @@ struct AddUserView: View {
 
     Task {
       do {
-        // Final GitHub existence check
-        let _ = try await GitHubService.shared.fetchUser(username: trimmedUsername)
+        // Final GitHub existence check and fetch user data
+        let user = try await GitHubService.shared.fetchUser(username: trimmedUsername)
+        print("✅ AddUserView - Successfully fetched user data for \(trimmedUsername)")
+
+        // Cache the user data immediately
+        DataManager.shared.cacheUser(user, for: trimmedUsername)
+        print("✅ AddUserView - Cached user data for \(trimmedUsername)")
+
+        // Download and cache avatar image
+        if let avatarUrl = URL(string: user.avatarUrl) {
+          do {
+            let (imageData, _) = try await URLSession.shared.data(from: avatarUrl)
+            DataManager.shared.cacheAvatar(imageData, for: trimmedUsername)
+            print("✅ AddUserView - Downloaded and cached avatar image for \(trimmedUsername)")
+          } catch {
+            print(
+              "⚠️ AddUserView - Failed to download avatar image for \(trimmedUsername): \(error)")
+          }
+        }
+
+        // Fetch and cache contributions data
+        print("🔄 AddUserView - Fetching contributions for \(trimmedUsername)")
+        let contributions = try await GitHubService.shared.fetchContributions(
+          username: trimmedUsername)
+        DataManager.shared.cacheContributions(contributions, for: trimmedUsername)
+        print("✅ AddUserView - Cached contributions data for \(trimmedUsername)")
+
+        // Now add the user to the store (all data is already cached)
         await MainActor.run {
           userStore.addUser(trimmedUsername, colorThemeId: selectedThemeId)
+          print("✅ AddUserView - Added user to store: \(trimmedUsername)")
           dismiss()
         }
       } catch {

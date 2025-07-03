@@ -6,7 +6,7 @@ struct UserContributionView: View {
   let forceRefresh: Bool
   @State private var user: GitHubUser?
   @State private var contributions: [ContributionDay] = []
-  @State private var isLoading = true
+  @State private var isLoading = false
   @State private var errorMessage = ""
   @Environment(\.colorScheme) private var colorScheme
 
@@ -35,15 +35,25 @@ struct UserContributionView: View {
         }
         .frame(height: 60)
       } else if !errorMessage.isEmpty {
-        HStack {
-          Image(systemName: "exclamationmark.triangle")
-            .foregroundColor(.orange)
-          Text(errorMessage)
-            .font(.caption)
-            .foregroundColor(.secondary)
-          Spacer()
+        VStack(spacing: 8) {
+          HStack {
+            Image(systemName: "exclamationmark.triangle")
+              .foregroundColor(.orange)
+            Text(errorMessage)
+              .font(.caption)
+              .foregroundColor(.secondary)
+            Spacer()
+          }
+
+          Button("Retry") {
+            Task {
+              await loadData()
+            }
+          }
+          .font(.caption)
+          .foregroundColor(.blue)
         }
-        .frame(height: 60)
+        .frame(height: 80)
       } else {
         userHeader.padding(.bottom, 4)
         contributionChart
@@ -157,6 +167,62 @@ struct UserContributionView: View {
   }
 
   private func loadData() async {
+    print(
+      "🔄 UserContributionView - Starting loadData for \(userSettings.username), forceRefresh: \(forceRefresh)"
+    )
+
+    // Check for cached data first
+    let cachedUser = DataManager.shared.getCachedUser(for: userSettings.username)
+    let cachedContributions = DataManager.shared.getCachedContributions(for: userSettings.username)
+
+    print(
+      "📦 UserContributionView - Cached user: \(cachedUser != nil), Cached contributions: \(cachedContributions != nil)"
+    )
+
+    // If we have cached data and not forcing refresh, use it immediately
+    if !forceRefresh, let cachedUser = cachedUser, let cachedContributions = cachedContributions {
+      print("✅ UserContributionView - Using cached data for \(userSettings.username)")
+      await MainActor.run {
+        self.user = cachedUser
+        self.contributions = cachedContributions
+        self.isLoading = false
+        self.errorMessage = ""
+      }
+      return
+    }
+
+    // If we have partial cached data, use it while loading fresh data
+    if !forceRefresh {
+      if let cachedUser = cachedUser {
+        await MainActor.run {
+          self.user = cachedUser
+        }
+      }
+      if let cachedContributions = cachedContributions {
+        await MainActor.run {
+          self.contributions = cachedContributions
+        }
+      }
+
+      // If we have both user and contributions cached, we're done
+      if cachedUser != nil && cachedContributions != nil {
+        print("✅ UserContributionView - Using complete cached data for \(userSettings.username)")
+        await MainActor.run {
+          self.isLoading = false
+          self.errorMessage = ""
+        }
+        return
+      }
+    }
+
+    // Show loading and fetch fresh data
+    await MainActor.run {
+      self.isLoading = true
+      self.errorMessage = ""
+    }
+
+    print("🔄 UserContributionView - Fetching fresh data for \(userSettings.username)")
+
     do {
       let userFetch: Task<GitHubUser, Error>
       let contributionsFetch: Task<[ContributionDay], Error>
@@ -184,6 +250,8 @@ struct UserContributionView: View {
         userFetch.value, contributionsFetch.value
       )
 
+      print("✅ UserContributionView - Successfully fetched data for \(userSettings.username)")
+
       // Download and cache avatar image
       if let avatarUrl = URL(string: fetchedUser.avatarUrl) {
         let (imageData, _) = try await URLSession.shared.data(from: avatarUrl)
@@ -194,8 +262,10 @@ struct UserContributionView: View {
         self.user = fetchedUser
         self.contributions = fetchedContributions
         self.isLoading = false
+        self.errorMessage = ""  // Clear any previous error messages
       }
     } catch {
+      print("❌ UserContributionView - Failed to load data for \(userSettings.username): \(error)")
       await MainActor.run {
         self.errorMessage = ErrorHandler.getErrorMessage(for: error)
         self.isLoading = false
