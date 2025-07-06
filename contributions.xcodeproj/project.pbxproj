@@ -457,7 +457,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = "Contribtuions WidgetExtension.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 7CE3E2W6XY;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Contribtuions Widget/Info.plist";
@@ -491,7 +491,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = "Contribtuions WidgetExtension.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 7CE3E2W6XY;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Contribtuions Widget/Info.plist";

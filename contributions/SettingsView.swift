@@ -14,172 +14,170 @@ struct SettingsView: View {
   @State private var showingAddUser = false
 
   var body: some View {
-    NavigationView {
-      List {
-        Section("Users") {
-          HStack {
-            Image(systemName: "plus.circle.fill")
-              .foregroundColor(.blue)
-            Text("Add User")
-              .font(.headline)
-            Spacer()
-            Button("Add") {
-              showingAddUser = true
-            }
-            .buttonStyle(.bordered)
+    List {
+      Section("Users") {
+        HStack {
+          Image(systemName: "plus.circle.fill")
+            .foregroundColor(.blue)
+          Text("Add User")
+            .font(.headline)
+          Spacer()
+          Button("Add") {
+            showingAddUser = true
           }
+          .buttonStyle(.bordered)
+        }
 
-          if userStore.users.isEmpty {
-            Text("No users added")
-              .foregroundColor(.secondary)
+        if userStore.users.isEmpty {
+          Text("No users added")
+            .foregroundColor(.secondary)
+            .font(.caption)
+        } else {
+          HStack {
+            Text("Drag to reorder users")
               .font(.caption)
-          } else {
+              .foregroundColor(.secondary)
+            Spacer()
+          }
+          .padding(.vertical, 4)
+
+          ForEach(userStore.users, id: \.username) { user in
             HStack {
-              Text("Drag to reorder users")
-                .font(.caption)
-                .foregroundColor(.secondary)
+              ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                  .fill(Color(.systemGray5))
+                  .frame(width: 32, height: 32)
+                CachedAvatarView(username: user.username, size: 28)
+              }
+              VStack(alignment: .leading) {
+                Text("@\(user.username)")
+                  .font(.headline)
+              }
+
               Spacer()
+
+              ThemePreviewSmall(theme: user.colorTheme)
+                .onTapGesture {
+                  selectedUser = user
+                  showingThemePicker = true
+                }
             }
-            .padding(.vertical, 4)
-
-            ForEach(userStore.users, id: \.username) { user in
-              HStack {
-                VStack(alignment: .leading) {
-                  Text("@\(user.username)")
-                    .font(.headline)
-                }
-
-                Spacer()
-
-                ThemePreviewSmall(theme: user.colorTheme)
-                  .onTapGesture {
-                    selectedUser = user
-                    showingThemePicker = true
-                  }
-              }
-              .swipeActions(edge: .trailing) {
-                Button("Delete", role: .destructive) {
-                  userStore.removeUser(user.username)
-                }
+            .swipeActions(edge: .trailing) {
+              Button("Delete", role: .destructive) {
+                userStore.removeUser(user.username)
               }
             }
-            .onMove(perform: moveUsers)
           }
+          .onMove(perform: moveUsers)
+        }
+      }
+
+      Section("GitHub Token") {
+        HStack {
+          Image(systemName: "key.fill")
+            .foregroundColor(.blue)
+          VStack(alignment: .leading) {
+            Text("Access Token")
+              .font(.headline)
+            Text(GitHubService.shared.isTokenConfigured() ? "Configured" : "Not Set")
+              .font(.caption)
+              .foregroundColor(GitHubService.shared.isTokenConfigured() ? .green : .orange)
+          }
+          Spacer()
+          Button(GitHubService.shared.isTokenConfigured() ? "Update" : "Setup") {
+            showingTokenSetup = true
+          }
+          .buttonStyle(.bordered)
         }
 
-        Section("GitHub Token") {
-          HStack {
-            Image(systemName: "key.fill")
-              .foregroundColor(.blue)
-            VStack(alignment: .leading) {
-              Text("Access Token")
-                .font(.headline)
-              Text(GitHubService.shared.isTokenConfigured() ? "Configured" : "Not Set")
-                .font(.caption)
-                .foregroundColor(GitHubService.shared.isTokenConfigured() ? .green : .orange)
-            }
-            Spacer()
-            Button(GitHubService.shared.isTokenConfigured() ? "Update" : "Setup") {
-              showingTokenSetup = true
-            }
-            .buttonStyle(.bordered)
-          }
-
-          if GitHubService.shared.isTokenConfigured() {
-            Button("Remove Token", role: .destructive) {
-              showingTokenAlert = true
-            }
+        if GitHubService.shared.isTokenConfigured() {
+          Button("Remove Token", role: .destructive) {
+            showingTokenAlert = true
           }
         }
+      }
 
-
-        Section("Cache Management") {
-          HStack {
-            Image(systemName: "trash.fill")
-              .foregroundColor(.orange)
-            VStack(alignment: .leading) {
-              Text("Flush Cache")
-                .font(.headline)
-              Text("Remove all cached data and fetch fresh data")
-                .font(.caption)
-                .foregroundColor(.secondary)
-            }
-            Spacer()
-            Button("Clear All") {
-              showingFlushCacheAlert = true
-            }
-            .buttonStyle(.bordered)
+      Section("Cache Management") {
+        HStack {
+          Image(systemName: "trash.fill")
             .foregroundColor(.orange)
+          VStack(alignment: .leading) {
+            Text("Flush Cache")
+              .font(.headline)
+            Text("Remove all cached data and fetch fresh data")
+              .font(.caption)
+              .foregroundColor(.secondary)
           }
+          Spacer()
+          Button("Clear All") {
+            showingFlushCacheAlert = true
+          }
+          .buttonStyle(.bordered)
+          .foregroundColor(.orange)
+        }
+      }
+
+      Section("About") {
+        HStack {
+          Image(systemName: "info.circle")
+            .foregroundColor(.blue)
+          Text(
+            "Version \((Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "Unknown") (\((Bundle.main.infoDictionary?["CFBundleVersion"] as? String) ?? "Unknown"))"
+          )
         }
 
-        Section("About") {
+        Link(destination: URL(string: "https://github.com/ahmedash95/ios-github-contribtuions")!) {
           HStack {
-            Image(systemName: "info.circle")
+            Image(systemName: "link")
               .foregroundColor(.blue)
-            Text(
-              "Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"))"
-            )
+            Text("Github repository")
+              .foregroundColor(.blue)
           }
+        }
 
-          Link(destination: URL(string: "https://github.com/ahmedash95/ios-github-contribtuions")!)
-          {
-            HStack {
-              Image(systemName: "link")
-                .foregroundColor(.blue)
-              Text("Github repository")
-                .foregroundColor(.blue)
-            }
-          }
-
-          Link(destination: URL(string: "https://x.com/ahmedash95")!) {
-            HStack {
-              Image(systemName: "person.circle")
-                .foregroundColor(.blue)
-              Text("@ahmedash95")
-                .foregroundColor(.blue)
-            }
+        Link(destination: URL(string: "https://x.com/ahmedash95")!) {
+          HStack {
+            Image(systemName: "person.circle")
+              .foregroundColor(.blue)
+            Text("@ahmedash95")
+              .foregroundColor(.blue)
           }
         }
       }
-      .navigationTitle("Settings")
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        // Toolbar is empty - removed Done and Edit buttons
+    }
+    .listStyle(.sidebar)
+    .sheet(isPresented: $showingThemePicker) {
+      if let user = selectedUser {
+        ThemePickerView(user: user, userStore: userStore)
       }
-      .sheet(isPresented: $showingThemePicker) {
-        if let user = selectedUser {
-          ThemePickerView(user: user, userStore: userStore)
-        }
+    }
+    .sheet(isPresented: $showingTokenSetup) {
+      GitHubTokenSetupView()
+    }
+    .sheet(isPresented: $showingAddUser) {
+      AddUserView(userStore: userStore)
+    }
+    .alert("Remove GitHub Token", isPresented: $showingTokenAlert) {
+      Button("Cancel", role: .cancel) {}
+      Button("Remove", role: .destructive) {
+        _ = GitHubService.shared.clearToken()
       }
-      .sheet(isPresented: $showingTokenSetup) {
-        GitHubTokenSetupView()
+    } message: {
+      Text(
+        "This will remove your GitHub token from the secure Keychain. You'll need to set it up again to view contribution data."
+      )
+    }
+    .alert("Flush Cache", isPresented: $showingFlushCacheAlert) {
+      Button("Cancel", role: .cancel) {}
+      Button("Clear All", role: .destructive) {
+        DataManager.shared.clearCache()
+        // Reload widget to reflect the cleared cache
+        WidgetCenter.shared.reloadAllTimelines()
       }
-      .sheet(isPresented: $showingAddUser) {
-        AddUserView(userStore: userStore)
-      }
-      .alert("Remove GitHub Token", isPresented: $showingTokenAlert) {
-        Button("Cancel", role: .cancel) {}
-        Button("Remove", role: .destructive) {
-          _ = GitHubService.shared.clearToken()
-        }
-      } message: {
-        Text(
-          "This will remove your GitHub token from the secure Keychain. You'll need to set it up again to view contribution data."
-        )
-      }
-      .alert("Flush Cache", isPresented: $showingFlushCacheAlert) {
-        Button("Cancel", role: .cancel) {}
-        Button("Clear All", role: .destructive) {
-          DataManager.shared.clearCache()
-          // Reload widget to reflect the cleared cache
-          WidgetCenter.shared.reloadAllTimelines()
-        }
-      } message: {
-        Text(
-          "This will remove all cached contribution data, user profiles, and avatars. Fresh data will be fetched the next time you view contributions."
-        )
-      }
+    } message: {
+      Text(
+        "This will remove all cached contribution data, user profiles, and avatars. Fresh data will be fetched the next time you view contributions."
+      )
     }
   }
 
