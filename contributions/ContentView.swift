@@ -68,11 +68,16 @@ struct ContentView: View {
           Label("Contributions", systemImage: "chart.dots.scatter")
         }
         .tag(0)
+      AnalyticsView()
+        .tabItem {
+          Label("Analytics", systemImage: "chart.bar.doc.horizontal")
+        }
+        .tag(1)
       SettingsView(userStore: userStore)
         .tabItem {
           Label("Settings", systemImage: "gearshape")
         }
-        .tag(1)
+        .tag(2)
     }
   }
 
@@ -156,7 +161,7 @@ struct ContentView: View {
       }
 
       Button {
-        selectedTab = 1
+        selectedTab = 2
       } label: {
         Label("Go to Settings", systemImage: "gearshape")
           .font(.headline)
